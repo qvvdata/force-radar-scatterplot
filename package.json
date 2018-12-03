@@ -1,0 +1,21 @@
+{
+  "name": "force-radar-scatterplot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {},
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "eslint-config-qvvdata": "github:qvvdata/eslint-config-qvvdata"
+  },
+  "eslintConfig": {
+    "extends": "eslint-config-qvvdata",
+    "globals": {
+      "document": true
+    }
+  },
+  "dependencies": {
+    "d3": "3.5.5"
+  }
+}
