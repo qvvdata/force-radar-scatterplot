@@ -1,12 +1,12 @@
-import ForceRadarScatterplot from './ForceRadarScatterplot.js';
-
+import '../../dist/ForceRadarScatterplot.js';
 
 // Fetch data.
+const ForceRadarScatterplotInstance = new ForceRadarScatterplot.default(document, '#chart-holder');
 
-const ForceRadarScatterplotInstance = new ForceRadarScatterplot(document, '#chart-holder');
+console.log('YOLO', ForceRadarScatterplot.default, ForceRadarScatterplotInstance);
 
 // Set Data
-ForceRadarScatterplotInstance.setData();
+// ForceRadarScatterplotInstance.setData();
 
 ForceRadarScatterplotInstance.init();
-console.log(ForceRadarScatterplotInstance);
+// console.log(ForceRadarScatterplotInstance);

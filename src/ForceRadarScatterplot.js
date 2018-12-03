@@ -1,3 +1,5 @@
+import d3 from './d3-v3.5.5';
+
 export default class ForceRadarScatterplot {
     constructor(document, holder) {
         this.document = document;
@@ -19,12 +21,20 @@ export default class ForceRadarScatterplot {
             categories: null
         };
 
+        this.d3 = d3();
+
+        const force = this.d3.layout.force();
+        console.log('D#', this.d3, force);
+
         /**
          * Data.
          *
          * @type {Array.<Object>}
          */
         this.data = [];
+
+
+        console.log('yolo');
     }
 
     init() {
@@ -33,6 +43,8 @@ export default class ForceRadarScatterplot {
 
     setupLayers() {
         this.createSVGLayer();
+
+        this.createLabels();
     }
 
     createSVGLayer() {
