@@ -20,10 +20,10 @@
     "extends": "eslint-config-qvvdata",
     "globals": {
       "document": true,
-      "webpack": true
+      "webpack": true,
+      "window": true
     }
   },
   "dependencies": {
-    "d3": "3.5.5"
   }
 }

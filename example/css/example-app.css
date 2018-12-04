@@ -2,10 +2,27 @@
 
 html,
 body {
+    background: #f3f3f3;
     margin: 0;
     padding: 0;
     position: relative;
 }
+
+.hr {
+    position: absolute;
+    height: 1px;
+    width: 100%;
+    transform: translate(0, -50%);
+    left: 0;
+    top: 50%;
+    background: #00F;
+    transform-origin: center;
+}
+
+.hr-90 {
+    transform: translate(0, -50%) rotate(90deg);
+}
+
 
 #chart-holder {
     border: 1px solid #000;
@@ -15,4 +32,27 @@ body {
     top: 50%;
     transform: translate(-50%, -50%);
     width: 500px;
+
+    /*border-radius: 500px;*/
 }
+
+    #chart-holder .circle {
+        position: absolute;
+        top: 10;
+        left: 10;
+        width: 480px;
+        height: 480px;
+        border: 1px solid #F00;
+        border-radius: 500px;
+    }
+
+    #chart-holder .frc-target {
+        position: absolute;
+        border-radius: 100px;
+        border: 1px solid #000;
+        text-align: center;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
