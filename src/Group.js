@@ -1,7 +1,9 @@
 import Helpers from './Helpers';
+import TargetPoint from './TargetPoint';
 
 export default class group {
     constructor(parent, customSettings) {
+        this.parent = parent;
 
         this.defaultSettings = {
             color: '#000',
@@ -19,14 +21,19 @@ export default class group {
      * @param  {Number} max [description]
      * @return {[type]}     [description]
      */
-    fillWithRandomData(min = 0, max = 50) {
+    fillWithRandomData(min = 150, max = 150) {
         const amount = min + (Math.random() * (max - min));
 
+        const centerCoords = this.parent.getCenterCoords();
         for (let i = 0; i < amount; i++) {
             const point = {
                 value: 1,
-                category: this,
-                label: 'Gerald Gartner'
+                group: this,
+                label: 'Gerald Gartner',
+                target: new TargetPoint(centerCoords.x, centerCoords.y),
+                radius: this.parent.settings.point.radius,
+                x: 0,
+                y: 0
             };
 
             this.points.push(point);

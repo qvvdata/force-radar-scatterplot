@@ -36,7 +36,6 @@ export default class Target {
          */
         this.angle = 0;
 
-
         this.defaultSettings = {
             color: '#000'
         };
