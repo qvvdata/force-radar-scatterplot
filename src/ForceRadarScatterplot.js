@@ -1,6 +1,7 @@
 import d3 from './d3-v3.5.5';
 import Group from './Group';
 import Helpers from './Helpers';
+import Point from './Point';
 import Target from './Target';
 
 export default class ForceRadarScatterplot {
@@ -40,7 +41,7 @@ export default class ForceRadarScatterplot {
             targets: null,
             hexagon: null,
             totalCountText: null,
-            pointNodes:[]
+            pointNodes: []
         };
 
         this.defaultSettings = {
@@ -51,16 +52,16 @@ export default class ForceRadarScatterplot {
                 height: 30
             },
 
-            groups: {
+            group: {
 
             },
 
             point: {
-                radius: 5
+                radius: 2.5
             },
 
             collisionDetection: {
-                clusterPadding: 10,
+                clusterPadding: 5,
                 nodePadding: 1
             }
         };
@@ -92,6 +93,8 @@ export default class ForceRadarScatterplot {
         }
 
 
+        this.pointMap = {};
+
         this.initialized = false;
         console.log(this);
         return this;
@@ -111,34 +114,22 @@ export default class ForceRadarScatterplot {
         this.renderPoints();
     }
 
-    renderPoints() {
-        console.log(this.d3);
-        this.nodes_ = [];
-        for (let i = 0; i < this.data.points.length; i++) {
-            const point = this.data.points[i];
+    movePointsRandomly() {
+        for (let i = 0; i<  this.nodes_.length; i++) {
+            let node = this.nodes_[i];
 
-            point.id = `point-${i}`;
-            point.x = 0;
-            point.y = 0;
-            point.radius = this.settings.point.radius;
-            point.color = '#F0F';
-            point.target.x = 250;
-            point.target.y = 250;
+            node.target.id = i;
+            node.target.x = 0 + Math.random() * 500;
+            node.target.y = 0 + Math.random() * 500;
 
-            const a = {
-                id: 'node' + i,
-                x: Math.random(),
-                y: Math.random(),
-                radius: this.settings.point.radius,
-                target: {
-                    x: 250,
-                    y: 250
-                }
-            };
-
-            this.nodes_.push(a);
+            // if (i > 20) break;
         }
 
+        this.force.resume();
+    }
+
+    renderPoints() {
+        this.nodes_ = this.data.points;
 
         // Use the force.
         this.force = this.d3.layout.force()
@@ -158,7 +149,7 @@ export default class ForceRadarScatterplot {
             .append('circle')
             .attr('id', d => d.id)
             .attr('class', 'point')
-            .style('fill', d => d.color);
+            .style('fill', d => d.getColor());
 
         // For smoother initial transition to settling spots.
         this.layers.pointNodes.transition()
@@ -206,17 +197,13 @@ export default class ForceRadarScatterplot {
             // console.log('R', r);
             // // let r = cls.settings.point.radius + Math.max(nodePadding, clusterPadding);
 
-
             const nx1 = d.x - r;
             const nx2 = d.x + r;
             const ny1 = d.y - r;
             const ny2 = d.y + r;
 
-
             // console.log(r, nx1, nx2, ny1, ny2);
-
             quadtree.visit((quad, x1, y1, x2, y2) => {
-
                 // console.log(quad.point);
                 if (quad.point && (quad.point !== d)) {
                 //     // console.log('yolo');
@@ -224,20 +211,23 @@ export default class ForceRadarScatterplot {
                     let y = d.y - quad.point.y;
                     let l = Math.sqrt(x * x + y * y);
 
-                    r = d.radius + quad.point.radius + (d.choice === quad.point.choice ? nodePadding : clusterPadding);
+                    r = d.radius + quad.point.radius + (d.target.id === quad.point.target.id ? nodePadding : clusterPadding);
 
+                    // points are directly stacked on top of eachother.
+                    // move them away randomly.
+                    if (l === 0) {
+                        d.x -= Math.random() / 2;
+                        d.y -= Math.random() / 2;
 
-
-                    if (l < r) {
-                        // console.log(l, r, alpha, l - r, l * alpha);
+                        quad.point.x += Math.random() / 2;
+                        quad.point.y += Math.random() / 2;
+                    } else if (l < r) {
                         l = (l - r) / l * alpha;
                         d.x -= (x *= l);
                         d.y -= (y *= l);
                         quad.point.x += x;
                         quad.point.y += y;
                     }
-
-
                 }
 
                 return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
@@ -246,7 +236,9 @@ export default class ForceRadarScatterplot {
     }
 
     setTotalPointcount(count) {
-        this.layers.totalCountText.textContent = count;
+        if (this.layers.totalCountText !== null) {
+            this.layers.totalCountText.textContent = count;
+        }
     }
 
     renderTargets() {
@@ -274,7 +266,7 @@ export default class ForceRadarScatterplot {
      * @param  {Number} groups  [description]
      * @return {[type]}         [description]
      */
-    fillWithRandomData(targets = 6, groups = 2) {
+    fillWithRandomData(targets = 6, groups = 2, points = 355) {
         if (this.initialized === false) throw new Error('You must initialize the class before filling with data.');
 
         const targetTitles = [
@@ -332,13 +324,43 @@ export default class ForceRadarScatterplot {
         for (let i = 0; i < groups; i++) {
             const group = new Group(this, groupData[i]);
 
-            group.fillWithRandomData();
+            // group.fillWithRandomData();
 
             this.addGroup(groupData[i].id, group);
 
-            this.data.points = this.data.points.concat(group.getPoints());
+            // this.data.points = this.data.points.concat(group.getPoints());
         }
 
+        const centerCoords = this.getCenterCoords();
+        for (let i = 0; i < points; i++) {
+
+            const pointId = `node${i}`;
+
+
+            const point = {
+                id: pointId,
+
+                // Randomize the starting position
+                // otherwise all points start stacked on top of eachother
+                // and this might give problems with the collision detection.
+                x: Math.random(),
+                y: Math.random(),
+                color: '#8B8B8B',
+                // x: 0,
+                // y: 0,
+                radius: this.settings.point.radius,
+                target: {
+                    id: 'center',
+                    x: centerCoords.x,
+                    y: centerCoords.y
+                }
+            };
+
+            const point = new Point(this, pointId);
+
+            this.data.points.push(point);
+            this.pointMap[pointId] = point;
+        }
         return this;
     }
 
@@ -465,7 +487,7 @@ export default class ForceRadarScatterplot {
         text.setAttribute('class', this.createPrefixedIdentifier('total-count'));
         text.setAttribute('x', 0);
         text.setAttribute('y', 0);
-        text.setAttribute('fill', '#F00');
+        text.setAttribute('fill', '#8B8B8B');
         text.setAttribute('text-anchor', 'middle');
         // For some reason need 3 px offset on the Y to get it centered correctly.
         text.setAttribute('transform', `translate(${width / 2}, ${(width / 2) + 3})`);
@@ -483,7 +505,8 @@ export default class ForceRadarScatterplot {
     }
 
     checkDataIntegrity(data) {
-        if (!data.categories) throw new Error('Data contains no categories.');
+        if (!data.targets) throw new Error('Data contains no targets.');
+        if (!data.groups) throw new Error('Data contains no groups.');
         if (!data.points) throw new Error('Data contains no points.');
     }
 
@@ -526,5 +549,27 @@ export default class ForceRadarScatterplot {
         this.data = data;
     }
 
+    updatePoint(id, callback) {
+        if (!this.pointMap[id]) {
+            console.log(`Trying to update non existing point with id: ${id}`);
+        } else {
+            callback(this.pointMap[i]);
+        }
+    }
 
+    updatePoints(callback) {
+        for (let i = 0; i < this.data.points.length; i++) {
+            callback(this.data.points[i]);
+        }
+
+        return this;
+    }
+
+    highlightPoint(id, color) {
+        if (!this.pointMap[id]) {
+            console.log(`Trying to update non existing point with id: ${id}`);
+        } else {
+            this.pointMap.setColor(color);
+        }
+    }
 }

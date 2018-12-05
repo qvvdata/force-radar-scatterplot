@@ -30,7 +30,7 @@ export default class Target {
         this.points = [];
 
         /**
-         * What angle relatie to the center are we drawn at.
+         * What angle relative to the center are we drawn at.
          *
          * @type {Number}
          */
