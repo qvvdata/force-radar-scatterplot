@@ -2,32 +2,15 @@ import Helpers from './Helpers';
 
 export default class Target {
     /**
-     * @param  {[type]} parent         [description]
-     * @param  {[type]} title          [description]
-     * @param  {[type]} customSettings [description]
-     * @return {[type]}                [description]
+     * @param  {ForceRadarScatterplot} chart
+     * @param  {Object}                customSettings
+     * @return {Target}
      */
-    constructor(parent, title, customSettings) {
+    constructor(chart, customSettings) {
         /**
-         * Parent chart.
-         *
          * @type {ForceRadarScatterplot}
          */
-        this.parent = parent;
-
-        /**
-         * Title for the category.
-         *
-         * @type {String}
-         */
-        this.title = title;
-
-        /**
-         * Datapoints.
-         *
-         * @type {Array}
-         */
-        this.points = [];
+        this.chart = chart;
 
         /**
          * What angle relative to the center are we drawn at.
@@ -36,16 +19,33 @@ export default class Target {
          */
         this.angle = 0;
 
+        /**
+         * @type {Object}
+         */
         this.defaultSettings = {
-            color: '#000'
+            id: null,
+            color: '#000',
+            title: ''
         };
 
+        /**
+         * @type {Object}
+         */
         this.settings = Helpers.mergeDeep(this.defaultSettings, customSettings);
+
+        this.x = 0;
+
+        this.y = 0;
+
+        /**
+         * We draw circles as collision detectors
+         * @type {Number}
+         */
+        this.collisionPrecision = 2.5 * window.devicePixelRatio;
     }
 
-
     /**
-     * @return {[type]}
+     * @return {Target}
      */
     render() {
         const element = this.createElement();
@@ -58,16 +58,25 @@ export default class Target {
             'transform-origin: center',
             `transform: rotate(${rotation}deg)`,
 
-            `height: ${this.parent.settings.target.height}px`,
-            `width: ${this.parent.settings.target.width}px`,
+            `height: ${this.chart.settings.target.height}px`,
+            `width: ${this.chart.settings.target.width}px`,
         ];
 
         element.setAttribute('style', style.join(';'));
 
-        this.parent.layers.targets.appendChild(element);
+        this.chart.layers.targets.appendChild(element);
+
+        this.x = coords.x;
+        this.y = coords.y;
         return this;
     }
 
+    /**
+     * Calculates the rotation angle of the target so it is
+     * perpendicular to the center.
+     *
+     * @return {Number}
+     */
     calculateRotationAngle() {
         let kwadrant;
 
@@ -97,6 +106,12 @@ export default class Target {
         }
     }
 
+    /**
+     * https://en.wikipedia.org/wiki/Quadrant_(plane_geometry)
+     *
+     * @param  {Number} angle
+     * @return {?Number}
+     */
     calculateKwadrantOfAngle(angle) {
         if (angle >= 0 && angle <= 90) return 1;
         if (angle > 90 && angle <= 180) return 2;
@@ -115,10 +130,10 @@ export default class Target {
      * }}
      */
     calculateDrawingCoordinates() {
-        const BBoxHolder = this.parent.holder.getBoundingClientRect();
+        const BBoxHolder = this.chart.holder.getBoundingClientRect();
         const centerX = BBoxHolder.width / 2;
         const centerY = BBoxHolder.height / 2;
-        const radius = (BBoxHolder.width - this.parent.settings.target.height) / 2;
+        const radius = (BBoxHolder.width - this.chart.settings.target.height) / 2;
         const angleInRadians = this.angle * Math.PI / 180;
 
         let x;
@@ -155,30 +170,56 @@ export default class Target {
         }
 
         return {
-            x: centerX + (x * radius) - (this.parent.settings.target.width / 2),
+            x: centerX + (x * radius) - (this.chart.settings.target.width / 2),
 
             // We invert the  y*radius because a positive number
             // should move the location up which is a negative number in screen coordinates.
-            y: centerY - (y * radius) - (this.parent.settings.target.height / 2)
+            y: centerY - (y * radius) - (this.chart.settings.target.height / 2)
         };
     }
 
     /**
-     * Create element.
-     *
      * @return {Object}
      */
     createElement() {
-        const element = this.parent.document.createElement('div');
+        const element = this.chart.document.createElement('div');
 
-        element.innerHTML = this.title;
-        element.setAttribute('class', this.parent.createPrefixedIdentifier('target'));
+        element.innerHTML = this.settings.title;
+        element.setAttribute('class', this.chart.createPrefixedIdentifier('target'));
 
         return element;
     }
 
     /**
-     * Setters
+     * We don't want our datapoints to overlap the targets so what we do
+     * is create invisible datapoints and add them to the data so the collision
+     * functionality detects them and bounces off.
+     *
+     * These points should be static and not move with the force. Only detect collisions.
+     *
+     * @return {Array}
+     */
+    createCollisionPoints() {
+        return [];
+    }
+
+    /**
+     * Getters.
+     */
+
+    /**
+     * @return {String}
+     */
+    getId() {
+        return this.settings.id;
+    }
+
+    getColor() {
+        return this.settings.color;
+    }
+
+    /**
+     * Setters.
      */
     setAngle(angle) {
         // Normalize all angles to be within 0 - 360.
@@ -191,5 +232,14 @@ export default class Target {
         }
 
         return this;
+    }
+
+    getX() {
+        return this.x;
+
+    }
+
+    getY() {
+        return this.y;
     }
 }

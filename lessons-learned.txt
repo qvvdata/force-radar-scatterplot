@@ -1,0 +1,29 @@
+
+- Having a lessons learned txt file in each project. (like a readme)
+    -> great idea, think about a blogpost.
+
+- Create a function fillWithRandomData that accepts counts
+    - have some preset configs per data element
+    - pick random presets untill the count is reached and create the raw config object for data
+    - pass it to setData()
+        - do an integrity check and throw errors so users know what is missing
+        - if it passes the integiry check parse the data and create classes/internal objects
+
+in this construction you have a random data generator that can generator random amounts of data
+you can test out your integiry check and setData function.
+
+Also your users can quickly visualise the chart and see how it will look and use it without havin to supply data.
+great for testing
+
+
+
+
+
+
+- There is a general structure to building every visualisations.
+    - Having a template can save a lot of time.
+
+- Mistakes:
+    - thinking too generic instead of building it for the type of job
+    - a lot of constant refactoring - I call it ping-ponging
+        - I guess this gets better with experience
