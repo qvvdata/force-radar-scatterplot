@@ -1,4 +1,5 @@
 import Helpers from './Helpers';
+import Point from './Point';
 
 export default class Target {
     /**
@@ -38,19 +39,36 @@ export default class Target {
         this.y = 0;
 
         /**
-         * We draw circles as collision detectors
+         * We draw circles as collision detectors.
+         * this is the full width of the detection object.
          * @type {Number}
          */
-        this.collisionPrecision = 2.5 * window.devicePixelRatio;
+        this.collisionPrecision = 2 * window.devicePixelRatio;
+
+        if (Helpers.on4kScreen() === true) {
+            this.collisionPrecision = 5 * window.devicePixelRatio;
+        }
+
+        // console.log(Helpers.test4k());
+        this.element = null;
+
+        this.untransformedBBox = null;
     }
 
     /**
      * @return {Target}
      */
     render() {
-        const element = this.createElement();
+        this.element = this.createElement();
         const coords = this.calculateDrawingCoordinates();
         const rotation = this.calculateRotationAngle();
+
+        const untransformedStyle = [
+            `left: ${coords.x}px`,
+            `top: ${coords.y}px`,
+            `height: ${this.chart.settings.target.height}px`,
+            `width: ${this.chart.settings.target.width}px`,
+        ];
 
         const style = [
             `left: ${coords.x}px`,
@@ -62,12 +80,19 @@ export default class Target {
             `width: ${this.chart.settings.target.width}px`,
         ];
 
-        element.setAttribute('style', style.join(';'));
+        // First apply the untransformed style so we can get it's untransformed bounding box.
+        this.element.setAttribute('style', untransformedStyle.join(';'));
+        this.chart.layers.targets.appendChild(this.element);
 
-        this.chart.layers.targets.appendChild(element);
 
-        this.x = coords.x;
-        this.y = coords.y;
+        // Get the untransformed bounding box.
+        this.untransformedBBox = this.element.getBoundingClientRect();
+
+        // Apply original style.
+        this.element.setAttribute('style', style.join(';'));
+
+        this.x = coords.xCenter;
+        this.y = coords.yCenter;
         return this;
     }
 
@@ -174,7 +199,10 @@ export default class Target {
 
             // We invert the  y*radius because a positive number
             // should move the location up which is a negative number in screen coordinates.
-            y: centerY - (y * radius) - (this.chart.settings.target.height / 2)
+            y: centerY - (y * radius) - (this.chart.settings.target.height / 2),
+
+            xCenter: centerX + (x * radius),
+            yCenter: centerY - (y * radius)
         };
     }
 
@@ -200,7 +228,54 @@ export default class Target {
      * @return {Array}
      */
     createCollisionPoints() {
-        return [];
+        const points = [];
+        const BBox = this.untransformedBBox;
+        const BBoxChart = this.chart.holder.getBoundingClientRect();
+        const chartCenter = this.chart.getCenterCoords();
+
+        const relativePos = {
+            top: BBox.top - BBoxChart.top,
+            right: BBox.right - BBoxChart.left,
+            bottom: BBox.bottom - BBoxChart.top,
+            left: BBox.left - BBoxChart.left
+        };
+
+        relativePos.width = relativePos.right - relativePos.left;
+        relativePos.height = relativePos.bottom - relativePos.top;
+        relativePos.x = relativePos.left;
+        relativePos.y = relativePos.top;
+
+        const stepsWidth = Math.ceil(BBox.width / this.collisionPrecision);
+        const stepsHeight = Math.ceil(BBox.height / this.collisionPrecision / 2);
+
+        const targetCenterX = relativePos.left + relativePos.width / 2;
+        const targetCenterY = relativePos.top + relativePos.height / 2;
+
+        console.log('stepsHeight', stepsHeight);
+        for (let i = 1; i < stepsWidth; i++) {
+            for (let j = 0; j < stepsHeight; j++) {
+                // Skip the first and last circle of the row closest the center
+                // because they are out of bounds because the targets are rounded.
+                if (i === 1 && j === stepsHeight - 1) continue;
+                if (i === stepsWidth - 1 && j === stepsHeight - 1) continue;
+
+                const point = new Point(this.chart);
+                point.isStatic = true;
+
+                point.x = relativePos.left + (i * this.collisionPrecision);
+                point.y = relativePos.bottom - (BBox.height / 2) + (j * this.collisionPrecision);
+
+                const rotatedCoords = Helpers.rotate(targetCenterX, targetCenterY, point.x, point.y, this.angle - 90);
+
+                point.x = rotatedCoords.x;
+                point.y = rotatedCoords.y;
+
+                point.radius = this.collisionPrecision / 2;
+                points.push(point);
+            }
+        }
+
+        return points;
     }
 
     /**

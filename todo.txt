@@ -1,0 +1,2 @@
+- offset the center targets coords by the size of the icon
+    so the points don't try to enter the hexageon collision boxes.

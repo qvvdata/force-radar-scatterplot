@@ -13,8 +13,10 @@ window.document.querySelector('#movePointsRandomly').addEventListener('click', (
 });
 
 
-window.document.querySelector('#movePointsToTargets').addEventListener('click', () => {
-    ForceRadarScatterplotInstance.updatePoints(point => {
-        point.setTarget(point.customAttributes.target);
-    });
+window.document.querySelector('#movePointsToRandomTarget').addEventListener('click', () => {
+    ForceRadarScatterplotInstance.movePointsToRandomTarget();
+});
+
+window.document.querySelector('#reset').addEventListener('click', () => {
+    ForceRadarScatterplotInstance.reset();
 });

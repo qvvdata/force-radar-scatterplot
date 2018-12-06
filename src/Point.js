@@ -61,7 +61,7 @@ export default class Point {
          *
          * @type {String}
          */
-        this.color = '#F00';
+        this.color = '#8B8B8B';
 
         /**
          * Radius for this specific point.

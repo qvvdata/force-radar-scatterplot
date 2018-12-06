@@ -27,3 +27,20 @@ great for testing
     - thinking too generic instead of building it for the type of job
     - a lot of constant refactoring - I call it ping-ponging
         - I guess this gets better with experience
+
+
+
+
+
+- Static collision detecteion
+    - fill in with points.
+    - add points in center so points cannot get trapped inside.
+    - there needs to be a repulsion factor when a point hits a static element,
+        and it must not be too high or it will bounce too hard.
+    - dont apply any force on the static points
+
+
+- don't fill up the target box with collision circles. on 4k too hard.
+- reduce collision precision on 4k screens.
+
+- use one box instead of circles.

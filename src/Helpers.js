@@ -40,4 +40,64 @@ export default class Helpers {
 
         return output;
     }
+
+
+    /**
+     * return the angle between two points.
+     *
+     * @param {number} x1       x position of first point
+     * @param {number} y1       y position of first point
+     * @param {number} x2       x position of second point
+     * @param {number} y2       y position of second point
+     * @return {number}         angle between two points (in radian)
+     */
+    static getAngleInRadians(x1, y1, x2, y2) {
+        const dx = x1 - x2;
+        const dy = y1 - y2;
+
+        return Math.atan2(dy, dx);
+    }
+
+
+    /**
+     * return the angle between two points.
+     *
+     * @param {number} x1       x position of first point
+     * @param {number} y1       y position of first point
+     * @param {number} x2       x position of second point
+     * @param {number} y2       y position of second point
+     * @return {number}         angle between two points (in radian)
+     */
+    static getAngleInDegrees(x1, y1, x2, y2) {
+        return Helpers.getAngleInRadians(x1, y1, x2, y2) * 180 / Math.PI;
+    }
+
+
+    static rotate(cx, cy, x, y, angle) {
+        const radians = (Math.PI / 180) * angle;
+        const cos = Math.cos(radians);
+        const sin = Math.sin(radians);
+        const nx = (cos * (x - cx)) + (sin * (y - cy)) + cx;
+        const ny = (cos * (y - cy)) - (sin * (x - cx)) + cy;
+
+        return {
+            x: nx,
+            y: ny
+        };
+    }
+
+    static on4kScreen() {
+        let test;
+
+        const width = screen.width;
+        const height = screen.height;
+
+        if (height > width) {
+            test = height;
+        } else {
+            test = width;
+        }
+
+        return (test > 3839);
+    }
 }

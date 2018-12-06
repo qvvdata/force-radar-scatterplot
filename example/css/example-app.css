@@ -9,6 +9,12 @@ body {
     position: relative;
 }
 
+#controls {
+    position: fixed;
+    right: 5px;
+    top: 5px;
+}
+
 .hr {
     position: absolute;
     height: 1px;

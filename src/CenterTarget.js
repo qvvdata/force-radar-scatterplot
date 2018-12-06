@@ -124,11 +124,7 @@ export default class CenterTarget extends Target {
         const totalLengthPath = this.iconNode.getTotalLength();
         const points = [];
 
-        const pointWidth = this.collisionPrecision;
-
-        // * 2 because we use circles and we need to multiply the radius to get the full
-        // width of the circle.
-        const amountOfCollisionPoints = Math.ceil(totalLengthPath / pointWidth);
+        const amountOfCollisionPoints = Math.ceil(totalLengthPath / this.collisionPrecision);
 
         for (let i = 0; i < amountOfCollisionPoints; i++) {
             const point = new Point(this.chart);

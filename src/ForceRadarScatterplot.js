@@ -18,7 +18,7 @@ export default class ForceRadarScatterplot {
     constructor(document, holder, customSettings = {}, data = null) {
         this.document = document;
 
-        this.debug = true;
+        this.debug = false;
 
         if (this.debug === true) {
             this.stats = new Stats();
@@ -134,6 +134,17 @@ export default class ForceRadarScatterplot {
         this.renderPoints();
     }
 
+    reset() {
+        this.renderedPoints = [];
+        this.layers.pointNodes = [];
+
+        this.points = new Map();
+        this.d3.select('.frc-points').selectAll('circle').remove();
+
+        this.setData(this.rawData);
+        this.render();
+    }
+
     movePointsRandomly() {
         const points = [...this.points.values()];
 
@@ -150,12 +161,38 @@ export default class ForceRadarScatterplot {
         this.force.resume();
     }
 
+    movePointsToRandomTarget() {
+        const targets = [...this.targets.values()];
+
+        this.points.forEach(point => {
+            if (point.isStatic === false) {
+                const index = Math.floor(Math.random() * (targets.length));
+                const randomTarget = targets[index];
+
+                point.setTarget(randomTarget);
+            }
+        });
+
+        this.triggerForce(0.1);
+    }
+
     renderPoints() {
+        const centerCoords = this.getCenterCoords();
         this.renderedPoints = this.renderedPoints.concat([...this.points.values()]);
 
         const points = this.renderedPoints;
 
-        console.log(this.renderedPoints, points);
+        // Start each point in a random point around the center
+        // so it will fall to the center nicely on the startup and
+        // not somewhere out of bounds.
+        this.points.forEach(point => {
+            const randAngleInRadians = (Math.random() * 360) * Math.PI / 180;
+            point.x = Math.cos(randAngleInRadians) * (this.holder.clientWidth / 4) + centerCoords.x;
+            point.y = Math.sin(randAngleInRadians) * (this.holder.clientHeight / 4) + centerCoords.y;
+        });
+
+        // return;
+        // console.log(this.renderedPoints, points);
         // Use the force.
         this.force = this.d3.layout.force()
             .nodes(points)
@@ -174,9 +211,9 @@ export default class ForceRadarScatterplot {
             .append('circle')
             .attr('id', d => d.getId())
             .attr('class', 'point')
-            // .attr('r', d => d.getRadius())
             .style('fill', d => d.getColor());
 
+        // Static nodes must have radius immediatly.
         this.layers.pointNodes.filter(d => d.isStatic)
             .attr('r', d => d.getRadius());
 
@@ -270,7 +307,6 @@ export default class ForceRadarScatterplot {
                     // points are directly stacked on top of eachother.
                     // move them away randomly.
                     if (l === 0) {
-
                         if (d.isStatic === false) {
                             d.x -= Math.random() / 20;
                             d.y -= Math.random() / 20;
@@ -283,11 +319,9 @@ export default class ForceRadarScatterplot {
                     } else if (l < r) {
                         l = (l - r) / l * alpha;
 
-
-
                         // if (l < -2.6) {
+                        //     console.log('L', l, (x *= l));
                         //     l = -0.0006;
-                        //     // console.log('L', l, (x *= l));
                         // }
 
 
@@ -453,6 +487,8 @@ export default class ForceRadarScatterplot {
     setData(data) {
         this.checkDataIntegrity(data);
 
+        this.rawData = data;
+
         // Add the center target first.
         const centerTarget = new CenterTarget(this, this.settings.centerTarget);
         this.targets.set(centerTarget.getId(), centerTarget);
@@ -513,9 +549,9 @@ export default class ForceRadarScatterplot {
     }
 
     updatePoints(callback) {
-        for (let i = 0; i < this.data.points.length; i++) {
-            callback(this.data.points[i]);
-        }
+        this.points.forEach(point => {
+            callback(point);
+        });
 
         return this;
     }
@@ -652,5 +688,22 @@ export default class ForceRadarScatterplot {
 
         this.setData(data);
         return this;
+    }
+
+    drawBoundingBox(BBox) {
+        const el = this.document.createElement('div');
+
+        const style = [
+            'position: absolute;',
+            `left: ${BBox.left}`,
+            `top:${BBox.top}`,
+            `width: ${BBox.width}`,
+            `height: ${BBox.height}`,
+            'border: 1px solid #F0F'
+        ];
+
+        el.setAttribute('style', style.join(';'));
+
+        this.holder.appendChild(el);
     }
 }
