@@ -8,27 +8,29 @@ import Target from './Target';
 
 export default class ForceRadarScatterplot {
     /**
-     * Constructor
-     *
-     * @param  {[type]} document [description]
-     * @param  {[type]} holder   [description]
-     * @param  {Array}  data     [description]
-     * @return {ForceRadarScatterplot} Instance.
+     * @param {Object} document
+     * @param {String} holderSelector
+     * @param {Object} customSettings
+     * @param {Array}  data
      */
-    constructor(document, holder, customSettings = {}, data = null) {
-        this.document = document;
-
+    constructor(document, holderSelector, customSettings = {}, data = null) {
+        /**
+         * This will turn on some visuals and statistics for the chart so
+         * you have a better view on what is going on.
+         *
+         * @type {Boolean}
+         */
         this.debug = false;
 
-        if (this.debug === true) {
-            this.stats = new Stats();
+        /**
+         * @type {d3}
+         */
+        this.d3 = d3();
 
-            document.body.appendChild(this.stats.dom);
-
-            this.stats.showPanel(0);
-            // this.stats.addPanel(1);
-            // this.stats.addPanel(2);
-        }
+        /**
+         * @type {Object}
+         */
+        this.document = document;
 
         /**
          * Prefix for all class/ids in order to
@@ -43,7 +45,7 @@ export default class ForceRadarScatterplot {
          *
          * @type {Object}
          */
-        this.holder = document.querySelector(holder);
+        this.holder = document.querySelector(holderSelector);
 
         /**
          * References to the layer objects.
@@ -53,21 +55,30 @@ export default class ForceRadarScatterplot {
         this.layers = {
             svg: null,
             targets: null,
-            hexagon: null,
-            totalCountText: null,
             pointNodes: []
         };
 
+        /**
+         * Will be overwritten by custom settings.
+         *
+         * @type {Object}
+         */
         this.defaultSettings = {
             hexagonSize: 20,
             target: {
+                background: '#f3f3f3',
+                borderColor: '#8B8B8B',
+                borderRadius: 100,
+                borderWidth: 1,
+                color: '#8B8B8B',
                 startAngle: 90,
                 width: 150,
                 height: 30
             },
 
             centerTarget: {
-                color: '#8B8B8B'
+                color: '#8B8B8B',
+                fill: '#FFF'
             },
 
             group: {
@@ -75,47 +86,105 @@ export default class ForceRadarScatterplot {
             },
 
             point: {
-                radius: 2.5
+                radius: 2.5,
+                initAnimationDuration: 750,
+                initAnimationDelayFactorBetweenPoints: 3
             },
 
             collisionDetection: {
                 clusterPadding: 5,
                 nodePadding: 1
+            },
+
+            // Play with these properties untill you get your desired effect.
+            force: {
+                // The static points need to repulse the active points more so the point doesn't fly through it.
+                staticCollisionRepulseFactor: 1,
+
+                // Slows down the rate at which the node travels from its original position to its newly calculated position.
+                // Lower values = MORE friction!!!
+                friction: 0.91,
+
+                // Strength of the attraction force towards it's destination point.
+                gravity: 0.051,
+
+                // “cooling parameter”that decrements at each tick and reduces the effect each of the forces play on the position of the nodes
+                startAlpha: 0.10
+
+                // friction slows the nodes down at each tick, and alpha slows
+                // them down between each tick. After a certain threshold is
+                // reached for alpha, the force layout stops calculating, freezing
+                // the graph into what is hopefully an optimal layout.
             }
         };
 
-        this.settings = Helpers.mergeDeep(this.defaultSettings, customSettings);
-
-        this.d3 = d3();
-
+        /**
+         * The force.
+         *
+         * @type {Skywalker}
+         */
         this.force = null;
 
+        /**
+         * Map of the targets.
+         *
+         * @type {Map}
+         */
         this.targets = new Map();
 
+        /**
+         * Map of datapoints.
+         *
+         * @type {Map}
+         */
         this.points = new Map();
 
-        // Points that will be rendered.
+        /**
+         * Contains the points that will be rendered in the visualisation.
+         * It is not the same as the point property because
+         * the rendered points will contain unvisible collision detection points
+         * as well.
+         *
+         * @type {Array}
+         */
         this.renderedPoints = [];
 
         /**
-         * Data.
+         * Final settings object.
          *
-         * @type {{
-         *       categories: Array,
-         *       points: Array
-         * }}
+         * @type {Object}
          */
+        this.settings = Helpers.mergeDeep(this.defaultSettings, customSettings);
 
         if (data !== null) {
             this.setData(data);
         }
 
-
+        /**
+         * Has this chart been initialzed?
+         *
+         * @type {Boolean}
+         */
         this.initialized = false;
-        console.log(this);
-        return this;
+
+        if (this.debug === true) {
+            // Activate stats and log this class for use in the console.
+            this.stats = new Stats();
+            document.body.appendChild(this.stats.dom);
+            this.stats.showPanel(0);
+
+            this.drawRulers();
+
+            console.log(this);
+        }
     }
 
+    /**
+     * Initialized the chart.
+     * Bundle functions that need to run upon init here.
+     *
+     * @return {ForceRadarScatterplot}
+     */
     init() {
         this.setupLayers();
 
@@ -123,105 +192,134 @@ export default class ForceRadarScatterplot {
         return this;
     }
 
+    /**
+     * Sets up all the necessary layers for the visualisation.
+     */
     setupLayers() {
         this.createSVGLayer();
         this.createPointsLayer();
         this.createTargetsLayer();
     }
 
+    /**
+     * Creates the svg object.
+     */
+    createSVGLayer() {
+        this.layers.svg = this.document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        this.layers.svg.setAttribute('class', this.createPrefixedIdentifier('svg'));
+        this.layers.svg.setAttribute('width', this.holder.clientWidth);
+        this.layers.svg.setAttribute('height', this.holder.clientHeight);
+        this.holder.appendChild(this.layers.svg);
+    }
+
+    /**
+     * Creates holder for the point nodes.
+     */
+    createPointsLayer() {
+        this.layers.points = this.document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        this.layers.points.setAttribute('class', this.createPrefixedIdentifier('points'));
+        this.layers.svg.appendChild(this.layers.points);
+    }
+
+    /**
+     * Creates the holder for the targets.
+     */
+    createTargetsLayer() {
+        this.layers.targets = this.document.createElement('div');
+        this.layers.targets.setAttribute('style', 'position: absolute; left: 0; top: 0; height: 100%; width: 100%; z-index: 1;');
+        this.layers.targets.setAttribute('class', this.createPrefixedIdentifier('targets'));
+        this.holder.appendChild(this.layers.targets);
+    }
+
+    /**
+     * Renders all the layers.
+     *
+     * @return {ForceRadarScatterplot}
+     */
     render() {
         this.renderTargets();
         this.renderPoints();
+
+        return this;
     }
 
-    reset() {
-        this.renderedPoints = [];
-        this.layers.pointNodes = [];
+    /**
+     * Renders each target object into the dom.
+     * Also creates their collision objects and adds them to be rendered.
+     */
+    renderTargets() {
+        const angleStep = 360 / (this.targets.size - 1); // -1 because we have to remove the center target.
+        let step = 0;
 
-        this.points = new Map();
-        this.d3.select('.frc-points').selectAll('circle').remove();
+        this.targets.forEach((target, id) => {
+            if (id === 'FRC_CENTER_TARGET') { // Center target only need to be rendered.
+                target.render();
+            } else {
+                const angle = this.settings.target.startAngle - (angleStep * step);
+                target.setAngle(angle)
+                    .render();
 
-        this.setData(this.rawData);
-        this.render();
-    }
-
-    movePointsRandomly() {
-        const points = [...this.points.values()];
-
-        for (let i = 0; i < points.length; i++) {
-            const node = points[i];
-
-            const target = new Target(this);
-            target.x = Math.random() * 500;
-            target.y = Math.random() * 500;
-
-            node.setTarget(target);
-        }
-
-        this.force.resume();
-    }
-
-    movePointsToRandomTarget() {
-        const targets = [...this.targets.values()];
-
-        this.points.forEach(point => {
-            if (point.isStatic === false) {
-                const index = Math.floor(Math.random() * (targets.length));
-                const randomTarget = targets[index];
-
-                point.setTarget(randomTarget);
+                step++;
             }
-        });
 
-        this.triggerForce(0.1);
+            // Create the collision points and add them to be rendered.
+            this.renderedPoints = this.renderedPoints.concat(target.createCollisionPoints());
+        });
     }
 
+    /**
+     * Renders all the points.
+     */
     renderPoints() {
         const centerCoords = this.getCenterCoords();
+
+        // Add collision points over the entire circle so points cannot escape and go out of bounds.
+        this.renderedPoints = this.renderedPoints.concat(this.createCircleCollisionPoints());
+
+        // We add the actual datapoints.
         this.renderedPoints = this.renderedPoints.concat([...this.points.values()]);
 
-        const points = this.renderedPoints;
-
+        // We assume that the points will always start in the center.
         // Start each point in a random point around the center
-        // so it will fall to the center nicely on the startup and
-        // not somewhere out of bounds.
+        // so it will fall to the center nicely on the startup.
         this.points.forEach(point => {
             const randAngleInRadians = (Math.random() * 360) * Math.PI / 180;
-            point.x = Math.cos(randAngleInRadians) * (this.holder.clientWidth / 4) + centerCoords.x;
-            point.y = Math.sin(randAngleInRadians) * (this.holder.clientHeight / 4) + centerCoords.y;
+            const offsetFromCenter = this.holder.clientWidth / 4;
+            point.x = (Math.cos(randAngleInRadians) * offsetFromCenter) + centerCoords.x;
+            point.y = (Math.sin(randAngleInRadians) * offsetFromCenter) + centerCoords.y;
         });
 
-        // return;
-        // console.log(this.renderedPoints, points);
-        // Use the force.
+        // We create the force.
+        // Keep the gravity and charge to 0.
+        // we do not use it, we have our own gravity function.
+        // You can play with the values to see what other effects you might get.
         this.force = this.d3.layout.force()
-            .nodes(points)
+            .nodes(this.renderedPoints)
             .size([this.layers.svg.width, this.layers.svg.height])
             .gravity(0)
             .charge(0)
-            .friction(0.91)
-            .on('tick', this.createForceTick(points))
-            .start();
+            .friction(this.settings.force.friction)
+            .on('tick', this.createForceTick(this.renderedPoints));
 
-
-        // Draw circle for each node.
+        // Draw circle for each point.
         this.layers.pointNodes = this.d3.select(this.layers.points).selectAll('circle')
-            .data(points)
+            .data(this.renderedPoints)
             .enter()
             .append('circle')
-            .attr('id', d => d.getId())
             .attr('class', 'point')
+            .attr('id', d => d.getId())
             .style('fill', d => d.getColor());
 
-        // Static nodes must have radius immediatly.
+        // Static points must have their radius set immediatly.
+        // We generaly use them for collisions.
         this.layers.pointNodes.filter(d => d.isStatic)
             .attr('r', d => d.getRadius());
 
-        // For smoother initial transition to settling spots.
+        // Normal data points will be animated in.
         this.layers.pointNodes.filter(d => !d.isStatic)
             .transition()
-            .duration(750)
-            .delay((d, i) => i * 3)
+            .duration(this.settings.point.initAnimationDuration)
+            .delay((d, i) => i * this.settings.point.initAnimationDelayFactorBetweenPoints)
             .attrTween('r', d => {
                 const i = this.d3.interpolate(0, d.radius);
 
@@ -229,19 +327,69 @@ export default class ForceRadarScatterplot {
                     return d.radius = i(t);
                 };
             });
+
+        // Start the force and set the start alpha.
+        this.force.start().alpha(this.settings.force.startAlpha);
     }
 
+    createCircleCollisionPoints() {
+        const points = [];
+
+        const pointSize = 25;
+        const originCoord = this.holder.clientWidth / 2;
+
+        // We reduce the size of the chart slightly to have a more compact collision circle.
+        const radius = (this.holder.clientWidth - 25) / 2;
+        const circumference = 2 * Math.PI * radius;
+        const steps = circumference / pointSize;
+
+        for (let i = 0; i <= steps; i++) {
+            // Get percentage of how far we are on the circle.
+            const pct = (i * pointSize) / circumference;
+
+            // calculate angle based on the percentage
+            const angle = 360 * pct;
+
+            // Convert to radians.
+            const radians = angle * Math.PI / 180;
+
+            // calculate x and y.
+            const x = originCoord + Math.cos(radians) * radius;
+            const y = originCoord + Math.sin(radians) * radius;
+
+            const point = new Point(
+                this,
+                `circle-collision-point-${i}`,
+                x,
+                y
+            );
+
+            point.radius = pointSize / 2;
+            point.isStatic = true;
+
+            points.push(point);
+        }
+
+        return points;
+    }
+
+    /**
+     * Creates the function for the tick of d3.force.
+     *
+     * @param  {Array} points
+     * @return {Function}
+     */
     createForceTick(points) {
         const cls = this;
         return function forceTick(e) {
-
             if (cls.debug === true) {
                 cls.stats.begin();
             }
 
             cls.layers.pointNodes
-                .each(cls.createGravityForce(0.051 * e.alpha))
+                .each(cls.createGravityForce(cls.settings.force.gravity * e.alpha))
                 .each(cls.createCollisionDetection(points, 0.5))
+                .attr('fill', d => d.color)
                 .attr('cx', d => d.x)
                 .attr('cy', d => d.y);
 
@@ -251,6 +399,12 @@ export default class ForceRadarScatterplot {
         };
     }
 
+    /**
+     * Creates the gravity force function.
+     *
+     * @param  {Number} alpha Decay factor between ticks.
+     * @return {Function}
+     */
     createGravityForce(alpha) {
         return function gravityForce(d) {
             const target = d.getTarget();
@@ -263,6 +417,19 @@ export default class ForceRadarScatterplot {
         };
     }
 
+    /**
+     * Create the collision detection function.
+     * Understanding this function can be a bit difficult but
+     * if you start from the top and follow the comments it should clear up
+     * the functionality.
+     *
+     * There is some functionality in comments but I keep it for reference
+     * and experimentation.
+     *
+     * @param  {Array}    points
+     * @param  {Number}   alpha  Decay factor between ticks.
+     * @return {Function}
+     */
     createCollisionDetection(points, alpha) {
         const cls = this;
         const quadtree = this.d3.geom.quadtree(points);
@@ -270,30 +437,27 @@ export default class ForceRadarScatterplot {
         const nodePadding = cls.settings.collisionDetection.nodePadding;
         const clusterPadding = cls.settings.collisionDetection.clusterPadding;
         return function collisionDetection(d) {
+            let r = (d.radius * 2) + Math.max(nodePadding, clusterPadding);
 
-            let r = d.radius + cls.settings.point.radius + Math.max(nodePadding, clusterPadding);
+            // let r = d.radius + nodePadding;
 
             const nx1 = d.x - r;
             const nx2 = d.x + r;
             const ny1 = d.y - r;
             const ny2 = d.y + r;
 
-            // console.log(r, nx1, nx2, ny1, ny2);
             quadtree.visit((quad, x1, y1, x2, y2) => {
-
-                // console.log(quad.point);
                 if (quad.point && (quad.point !== d)) {
-                    // console.log('yolo', quad.point, d);
-                    let x = d.x - quad.point.x;
-                    let y = d.y - quad.point.y;
+                    const x = d.x - quad.point.x;
+                    const y = d.y - quad.point.y;
                     let l = Math.sqrt(x * x + y * y);
 
-                    let staticRepulseFactor = 1.5;
-
-                    // r = d.radius + quad.point.radius + (d.target.id === quad.point.target.id ? nodePadding : clusterPadding);
+                    const staticRepulseFactor = cls.settings.force.staticCollisionRepulseFactor;
 
                     r = d.radius + quad.point.radius + nodePadding;
 
+                    // Try to change the radius of the detection if the points have different targets
+                    // making them repulse eachother more.
                     // if (d.getTarget() !== null && quad.point.getTarget() !== null) {
                     //     if (d.target === quad.point.target) {
                     //         r += nodePadding;
@@ -303,6 +467,9 @@ export default class ForceRadarScatterplot {
                     // } else {
                     //     r += nodePadding;
                     // }
+
+                    // Original algorithm for the code above.
+                    // r = d.radius + quad.point.radius + (d.target.id === quad.point.target.id ? nodePadding : clusterPadding);
 
                     // points are directly stacked on top of eachother.
                     // move them away randomly.
@@ -319,46 +486,23 @@ export default class ForceRadarScatterplot {
                     } else if (l < r) {
                         l = (l - r) / l * alpha;
 
-                        // if (l < -2.6) {
-                        //     console.log('L', l, (x *= l));
-                        //     l = -0.0006;
-                        // }
-
-
-                        if (d.isStatic && quad.point.isStatic === false) {
-                            quad.point.x -= (x * l * staticRepulseFactor);
-
-                            quad.point.y -= (y * l * staticRepulseFactor);
+                        if (quad.point.isStatic === true && d.isStatic === false) {
+                            d.x -= (x * l);
+                            d.y -= (y * l);
                         }
 
-                        if (quad.point.isStatic && d.isStatic === false) {
-                            d.x -= (x * l * staticRepulseFactor);
-                            d.y -= (y * l * staticRepulseFactor);
-
-                            // d.x -= (x *= l);
-                            // d.y -= (y *= l);
+                        if (d.isStatic === true && quad.point.isStatic === false) {
+                            quad.point.x += (x * l * staticRepulseFactor);
+                            quad.point.y += (y * l * staticRepulseFactor);
                         }
 
                         if (d.isStatic === false && quad.point.isStatic === false) {
-                            // if (d.isStatic === false) {
-                                d.x -= x * l;
-                                d.y -= y * l;
-                            // }
+                            d.x -= x * l;
+                            d.y -= y * l;
 
-                            // if (quad.point.isStatic === false) {
-                                quad.point.x += x * l;
-                                quad.point.y += y * l;
-                            // }
+                            quad.point.x += x * l;
+                            quad.point.y += y * l;
                         }
-                        // if (d.isStatic === false) {
-                        //     d.x -= (x *= l);
-                        //     d.y -= (y *= l);
-                        // }
-
-                        // if (quad.point.isStatic === false) {
-                        //     quad.point.x += x;
-                        //     quad.point.y += y;
-                        // }
                     }
                 }
 
@@ -368,35 +512,27 @@ export default class ForceRadarScatterplot {
     }
 
     /**
-     * @return {ForceRadarScatterplot}
+     * Resets the data and re-rerenders.
      */
-    renderTargets() {
-        // Depending on the amount of categories we will start at
-        // a different locations and have a different angle.
-        const angleStep = 360 / (this.targets.size - 1); // -1 because we have to remove the center target.
-        let step = 0;
+    reset() {
+        // Reset these properties or we will have double data.
+        this.renderedPoints = [];
 
-        this.targets.forEach((target, id) => {
-            if (id === 'TARGET_CENTER') {
-                target.render();
-            } else {
-                const angle = this.settings.target.startAngle - (angleStep * step);
-                target.setAngle(angle)
-                    .render();
+        // You must do this before resetting the property!
+        // Remove all the point nodes.
+        this.layers.pointNodes.remove();
 
-                step++;
-            }
+        this.layers.pointNodes = [];
+        this.points = new Map();
+        this.targets = new Map();
 
-            // Create the collision points and add them to the renderer.
-            this.renderedPoints = this.renderedPoints.concat(target.createCollisionPoints());
-        });
-
-        return this;
+        this.setData(this.rawData);
+        this.render();
     }
 
     /**
-     * @param  {String}                id
-     * @param  {Target}              category
+     * @param  {String} id
+     * @param  {Target} category
      * @return {ForceRadarScatterplot}
      */
     addGroup(id, group) {
@@ -405,53 +541,6 @@ export default class ForceRadarScatterplot {
 
         return this;
     }
-
-    /**
-     * Remove a category from the chart.
-     *
-     * @param  {String}                id
-     * @return {ForceRadarScatterplot}
-     */
-    removeTarget(id) {
-        if (this.data.targets[id]) {
-            delete this.data.targets[id];
-            this.data.targetsLength--;
-        }
-
-        return this;
-    }
-
-
-
-    createSVGLayer() {
-        this.layers.svg = this.document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-
-        this.layers.svg.setAttribute('class', this.createPrefixedIdentifier('svg'));
-
-        this.layers.svg.setAttribute('width', this.holder.clientWidth);
-        this.layers.svg.setAttribute('height', this.holder.clientHeight);
-
-        this.holder.appendChild(this.layers.svg);
-    }
-
-    createPointsLayer() {
-        this.layers.points = this.document.createElementNS('http://www.w3.org/2000/svg', 'g');
-
-        this.layers.points.setAttribute('class', this.createPrefixedIdentifier('points'));
-
-        this.layers.svg.appendChild(this.layers.points);
-    }
-
-    createTargetsLayer() {
-        this.layers.targets = this.document.createElement('div');
-
-        this.layers.targets.setAttribute('style', 'position: absolute; left: 0; top: 0; height: 100%; width: 100%; z-index: 1;');
-        this.layers.targets.setAttribute('class', this.createPrefixedIdentifier('targets'));
-
-        this.holder.appendChild(this.layers.targets);
-    }
-
-
 
     /**
      * Create identifier with our set prefix.
@@ -471,14 +560,6 @@ export default class ForceRadarScatterplot {
             x: this.holder.clientWidth / 2,
             y: this.holder.clientHeight / 2,
         };
-    }
-
-    getTarget(id) {
-        if (this.targets[id]) {
-            return this.targets[id];
-        }
-
-        return null;
     }
 
     /**
@@ -509,13 +590,17 @@ export default class ForceRadarScatterplot {
             const point = new Point(this, rawData.id);
             point.radius = this.settings.point.radius;
 
-            // console.log(this.targets.get('FRC_CENTER_TARGET'));
             point.setTarget(this.targets.get('FRC_CENTER_TARGET'));
 
             this.points.set(rawData.id, point);
         }
     }
 
+    /**
+     * Check if the raw data object is correctly formatted.
+     *
+     * @param {Object}
+     */
     checkDataIntegrity(data) {
         if (!Array.isArray(data.targets)) {
             throw new Error('Targets must be an array');
@@ -577,11 +662,13 @@ export default class ForceRadarScatterplot {
     }
 
     /**
-     * !important: you must run init first before
-     * filling with data!
-     *
-     * @param  {Number} targets
-     * @param  {Number} groups
+     * Development helper functions
+     */
+
+    /**
+     * @param  {Number} targetCount
+     * @param  {Number} groupCount
+     * @param  {Number} pointCount
      * @return {ForceRadarScatterplot}
      */
     fillWithRandomData(targetCount = 6, groupCount = 2, pointCount = 355) {
@@ -685,11 +772,13 @@ export default class ForceRadarScatterplot {
             data.points.push(pointConfig);
         }
 
-
         this.setData(data);
         return this;
     }
 
+    /**
+     * @param {Object}
+     */
     drawBoundingBox(BBox) {
         const el = this.document.createElement('div');
 
@@ -705,5 +794,113 @@ export default class ForceRadarScatterplot {
         el.setAttribute('style', style.join(';'));
 
         this.holder.appendChild(el);
+    }
+
+    /**
+     * Draw rulers in the chart so we can have a better picture of alignment.
+     *
+     * @return {ForceRadarScatterplot}
+     */
+    drawRulers() {
+        const rulerHorizontal = this.document.createElement('div');
+        const rulerVertical = this.document.createElement('div');
+        const circleRuler = this.document.createElement('div');
+        const chartBorderRuler = this.document.createElement('div');
+
+        const baseStyles = [
+            'position: absolute',
+            'height: 1px',
+            'width: 100%',
+            'left: 0',
+            'top: 50%',
+            'background: #00F',
+            'transform-origin: center'
+        ];
+
+        const horizontalRuleStyles = baseStyles.concat(['transform: translate(0, -50%)']);
+        const verticalRuleStyles = baseStyles.concat(['transform: translate(0, -50%) rotate(90deg)']);
+
+        rulerHorizontal.setAttribute('style', horizontalRuleStyles.join(';'));
+        this.holder.appendChild(rulerHorizontal);
+
+
+        rulerVertical.setAttribute('style', verticalRuleStyles.join(';'));
+        this.holder.appendChild(rulerVertical);
+
+        circleRuler.setAttribute('style', [
+            'position: absolute',
+            'top: 10px',
+            'left: 10px',
+            'width: 480px',
+            'height: 480px',
+            'border: 1px solid #F00',
+            'border-radius: 500px'
+        ].join(';'));
+        this.holder.appendChild(circleRuler);
+
+        chartBorderRuler.setAttribute('style', [
+            'position: absolute',
+            'top: 0',
+            'left: 0',
+            'width: 100%',
+            'height: 100%',
+            'border: 1px solid #F0F'
+        ].join(';'));
+        this.holder.appendChild(chartBorderRuler);
+
+        return this;
+    }
+
+    /**
+     * Moves points ta random coordinate in the chart.
+     *
+     * @return {ForceRadarScatterplot}
+     */
+    movePointsRandomly() {
+        const points = [...this.points.values()];
+
+        for (let i = 0; i < points.length; i++) {
+            const node = points[i];
+
+            const target = new Target(this);
+            target.setX(Math.random() * 500);
+            target.setY(Math.random() * 500);
+
+            node.setTarget(target);
+        }
+
+        this.triggerForce();
+
+        return this;
+    }
+
+    /**
+     * Moves points ta random selected target.
+     *
+     * @return {ForceRadarScatterplot}
+     */
+    movePointsToRandomTarget() {
+        const targets = [...this.targets.values()];
+
+        this.points.forEach(point => {
+            if (point.isStatic === false) {
+                const index = Math.floor(Math.random() * (targets.length));
+                const randomTarget = targets[index];
+
+                point.setTarget(randomTarget);
+            }
+        });
+
+        this.triggerForce(0.11);
+
+        return this;
+    }
+
+    changeColours(color) {
+        const points = [...this.points.values()];
+
+        for (let i = 0; i < points.length; i++) {
+            points[i].setColor(color);
+        }
     }
 }

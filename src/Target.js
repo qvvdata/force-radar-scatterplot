@@ -24,35 +24,57 @@ export default class Target {
          * @type {Object}
          */
         this.defaultSettings = {
+            background: null,
+            borderColor: null,
+            borderRadius: null,
+            borderWidth: null,
             id: null,
-            color: '#000',
+            color: null,
             title: ''
         };
+
+        /**
+         * We draw circles as collision detectors.
+         * this is the full width of the detection object.
+         *
+         * @type {Number}
+         */
+        this.collisionPrecision = 3 * window.devicePixelRatio;
+
+        // On 4k screens we reduce the precision by making the dots bigger
+        // otherwise it slows down too much.
+        if (Helpers.on4kScreen() === true) {
+            this.collisionPrecision = 5 * window.devicePixelRatio;
+        }
+
+        /**
+         * Dom Element.
+         *
+         * @type {Object}
+         */
+        this.element = null;
+
+        /**
+         * BBox before the element becomes transformed into a rotation.
+         *
+         * @type {Object}
+         */
+        this.untransformedBBox = null;
+
+        /**
+         * @type {Number}
+         */
+        this.xCenter = 0;
+
+        /**
+         * @type {Number}
+         */
+        this.yCenter = 0;
 
         /**
          * @type {Object}
          */
         this.settings = Helpers.mergeDeep(this.defaultSettings, customSettings);
-
-        this.x = 0;
-
-        this.y = 0;
-
-        /**
-         * We draw circles as collision detectors.
-         * this is the full width of the detection object.
-         * @type {Number}
-         */
-        this.collisionPrecision = 2 * window.devicePixelRatio;
-
-        if (Helpers.on4kScreen() === true) {
-            this.collisionPrecision = 5 * window.devicePixelRatio;
-        }
-
-        // console.log(Helpers.test4k());
-        this.element = null;
-
-        this.untransformedBBox = null;
     }
 
     /**
@@ -63,7 +85,15 @@ export default class Target {
         const coords = this.calculateDrawingCoordinates();
         const rotation = this.calculateRotationAngle();
 
+        // Todo, use settsrs.
+        const color = this.settings.color || this.chart.settings.target.color;
+        const background = this.settings.background || this.chart.settings.target.background;
+        const borderColor = this.settings.borderColor || this.chart.settings.target.borderColor;
+        const borderWidth = this.settings.borderWidth || this.chart.settings.target.borderWidth;
+        const borderRadius = this.settings.borderRadius || this.chart.settings.target.borderRadius;
+
         const untransformedStyle = [
+            'position: absolute',
             `left: ${coords.x}px`,
             `top: ${coords.y}px`,
             `height: ${this.chart.settings.target.height}px`,
@@ -71,6 +101,18 @@ export default class Target {
         ];
 
         const style = [
+            `background: ${background}`,
+            `color: ${color}`,
+            `border-width: ${borderWidth}px`,
+            `border-color: ${borderColor}`,
+            `border-radius: ${borderRadius}px`,
+            'border-style: solid',
+
+            'display: flex',
+            'align-items: center',
+            'justify-content: center',
+
+            'position: absolute',
             `left: ${coords.x}px`,
             `top: ${coords.y}px`,
             'transform-origin: center',
@@ -84,15 +126,33 @@ export default class Target {
         this.element.setAttribute('style', untransformedStyle.join(';'));
         this.chart.layers.targets.appendChild(this.element);
 
-
         // Get the untransformed bounding box.
         this.untransformedBBox = this.element.getBoundingClientRect();
 
         // Apply original style.
         this.element.setAttribute('style', style.join(';'));
 
-        this.x = coords.xCenter;
-        this.y = coords.yCenter;
+        this.xCenter = coords.xCenter;
+        this.yCenter = coords.yCenter;
+
+
+        if (this.chart.debug === true) {
+            const centerEl = this.chart.document.createElement('div');
+
+            centerEl.setAttribute('style', [
+                'position: absolute',
+                `left: ${this.xCenter}px`,
+                `top: ${this.yCenter}`,
+                'width: 20px',
+                'height: 20px',
+                'border-radius: 100px',
+                'background: rgba(0, 250, 0, .5)',
+                'z-index: 1000',
+                'transform: translate(-50%, -50%)'
+            ].join(';'));
+
+            this.chart.holder.appendChild(centerEl);
+        }
         return this;
     }
 
@@ -201,8 +261,10 @@ export default class Target {
             // should move the location up which is a negative number in screen coordinates.
             y: centerY - (y * radius) - (this.chart.settings.target.height / 2),
 
-            xCenter: centerX + (x * radius),
-            yCenter: centerY - (y * radius)
+            // We offset the center by the height so the target point is not inside the target
+            // visualisation but on top of it.
+            xCenter: centerX + (x * (radius - this.chart.settings.target.height / 2)),
+            yCenter: centerY - (y * (radius - this.chart.settings.target.height / 2))
         };
     }
 
@@ -231,7 +293,6 @@ export default class Target {
         const points = [];
         const BBox = this.untransformedBBox;
         const BBoxChart = this.chart.holder.getBoundingClientRect();
-        const chartCenter = this.chart.getCenterCoords();
 
         const relativePos = {
             top: BBox.top - BBoxChart.top,
@@ -251,7 +312,6 @@ export default class Target {
         const targetCenterX = relativePos.left + relativePos.width / 2;
         const targetCenterY = relativePos.top + relativePos.height / 2;
 
-        console.log('stepsHeight', stepsHeight);
         for (let i = 1; i < stepsWidth; i++) {
             for (let j = 0; j < stepsHeight; j++) {
                 // Skip the first and last circle of the row closest the center
@@ -294,7 +354,31 @@ export default class Target {
     }
 
     /**
+     * You could extend these function return different target points depending
+     * on the situation or already existing points inside.
+     *
+     * This way you could for example move a point to points belonging to the same group,
+     * or spread them out over the whole target.
+     *
+     * @return {Number}
+     */
+    getX() {
+        return this.xCenter;
+    }
+
+    /**
+    * @return {Number}
+    */
+    getY() {
+        return this.yCenter;
+    }
+
+    /**
      * Setters.
+     */
+
+    /**
+     * @param {Number}
      */
     setAngle(angle) {
         // Normalize all angles to be within 0 - 360.
@@ -309,12 +393,17 @@ export default class Target {
         return this;
     }
 
-    getX() {
-        return this.x;
-
+    /**
+     * @param {Number}
+     */
+    setX(x) {
+        this.xCenter = x;
     }
 
-    getY() {
-        return this.y;
+    /**
+     * @param {Number}
+     */
+    setY(y) {
+        this.yCenter = y;
     }
 }

@@ -21,7 +21,8 @@
     "globals": {
       "document": true,
       "webpack": true,
-      "window": true
+      "window": true,
+      "screen": true
     },
     "rules": {
         "no-param-reassign": ["error", { "props": false }],

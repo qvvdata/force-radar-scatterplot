@@ -4,23 +4,23 @@ import Target from './Target';
  * This construct a point for the chart.
  *
  * !!! Important !!!
- * Because we pass this to d3.force as the node it will automatically append some variables which we have
- * described in the constructor.
+ * Because we pass this to d3.force as the node it will dynamically add properties.
+ *
+ * Todo: Should prefix our own variables to see the difference.
  */
 export default class Point {
     /**
      * !! Important
      *
      * We don't use a settings object here because this point will be used
-     * by the d3.force algorhytm and it will internally access some properties on
+     * by the d3.force algorithm and it will internally access some properties on
      * this object directly so I decided to keep all properties global to the class.
      *
-     * @param  {[type]} chart [description]
-     * @param  {[type]} id    [description]
-     * @param  {[type]} x     [description]
-     * @param  {[type]} y     [description]
-     * @param  {Number} value [description]
-     *
+     * @param  {ForceRadarScatterplot} chart
+     * @param  {Number}                id
+     * @param  {Number}                x
+     * @param  {Number}                y
+     * @param  {Number}                value
      * @return {Point}
      */
     constructor(chart, id, x, y, value = 1) {
@@ -135,11 +135,10 @@ export default class Point {
         if (target instanceof Target) {
             this.target = target;
         } else if (typeof target === 'string') {
-            target = this.chart.targets.get(id);
+            target = this.chart.targets.get(target);
 
             if (target !== null) {
                 this.target = target;
-
 
                 if (useTargetColor === true) {
                     this.setColor(target.getColor());
@@ -159,6 +158,6 @@ export default class Point {
     setColor(color) {
         this.color = color;
 
-        // Update the svg node.
+        // TODO: Update the svg node.
     }
 }

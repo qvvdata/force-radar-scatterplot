@@ -1,2 +1,20 @@
-- offset the center targets coords by the size of the icon
-    so the points don't try to enter the hexageon collision boxes.
+Major:
+-------
+- Changing colours:
+    - Must loop over points and create node manually and set it in the point.
+
+- Updating the count in the center depending on the points.
+
+- Highlighting a point/points
+
+Medium:
+-------
+
+- Discuss where and how to show statistics for the other targets.
+
+Minor:
+-------
+    - prefix non d3 vars in the point class so we can see the difference.
+
+    - figuring out how to reset the position of a point if it goes out of bounds
+        - Tried it and the points just flies all over the place.

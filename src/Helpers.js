@@ -41,7 +41,6 @@ export default class Helpers {
         return output;
     }
 
-
     /**
      * return the angle between two points.
      *
@@ -58,7 +57,6 @@ export default class Helpers {
         return Math.atan2(dy, dx);
     }
 
-
     /**
      * return the angle between two points.
      *
@@ -72,7 +70,16 @@ export default class Helpers {
         return Helpers.getAngleInRadians(x1, y1, x2, y2) * 180 / Math.PI;
     }
 
-
+    /**
+     * Rotates a point around an origin.
+     *
+     * @param  {Number} cx
+     * @param  {Number} cy
+     * @param  {Number} x
+     * @param  {Number} y
+     * @param  {Number} angle
+     * @return {Number}
+     */
     static rotate(cx, cy, x, y, angle) {
         const radians = (Math.PI / 180) * angle;
         const cos = Math.cos(radians);
@@ -86,6 +93,11 @@ export default class Helpers {
         };
     }
 
+    /**
+     * Checks if we are on a 4k screen.
+     *
+     * @return {Boolean}
+     */
     static on4kScreen() {
         let test;
 

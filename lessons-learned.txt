@@ -42,5 +42,8 @@ great for testing
 
 - don't fill up the target box with collision circles. on 4k too hard.
 - reduce collision precision on 4k screens.
-
 - use one box instead of circles.
+
+
+basic collision detection is not easy
+requires a lot of fintetuning.

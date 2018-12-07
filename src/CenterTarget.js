@@ -1,5 +1,6 @@
-import Target from './Target';
+import Helpers from './Helpers';
 import Point from './Point';
+import Target from './Target';
 
 export default class CenterTarget extends Target {
     constructor(chart, customSettings) {
@@ -32,37 +33,54 @@ export default class CenterTarget extends Target {
     }
 
     render() {
+        const group = this.chart.document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        group.setAttribute('class', this.chart.createPrefixedIdentifier('total-count-holder'));
+        this.chart.layers.svg.appendChild(group);
+
         // Calculate dimensions for hexagon.
-        const size = this.chart.settings.hexagonSize;
+        let size = this.chart.settings.hexagonSize;
+
+        // We must double the size on 4k monitors.
+        if (Helpers.on4kScreen() === true) {
+            size *= 2;
+        }
+
         const width = size * window.devicePixelRatio;
         const height = size * Math.sqrt(3) / 2 * window.devicePixelRatio;
 
-
         // Move the group to the center.
-        const xTranslate = (this.chart.holder.clientWidth / 2) - (width / 2);
-        const yTranslate = (this.chart.holder.clientHeight / 2) - (height / 2);
+        const x = (this.chart.holder.clientWidth / 2) - (width / 2);
+        const y = (this.chart.holder.clientHeight / 2) - (height / 2);
 
-        const group = this.chart.document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        const icon = this.createHexagonElement(xTranslate, yTranslate, width, height);
-        const text = this.createTextElement(width, height);
-
-        group.setAttribute('class', this.chart.createPrefixedIdentifier('total-count-holder'));
-
-
-        // group.setAttribute('transform', `translate(${xTranslate}, ${yTranslate})`);
-
-        this.chart.layers.svg.appendChild(group);
+        const icon = this.createHexagonElement(x, y, width, height);
         group.appendChild(icon);
-        group.appendChild(text);
 
-        this.textNode = text;
+        // Render text element for statistics.
+        this.renderTextElement(group);
+
         this.iconNode = icon;
-
-        this.x = this.chart.holder.clientWidth / 2;
-
-        this.y = this.chart.holder.clientHeight / 2;
+        this.xCenter = this.chart.holder.clientWidth / 2;
+        this.yCenter = this.chart.holder.clientHeight / 2;
 
         return this;
+    }
+
+    renderTextElement(group) {
+        const text = this.createTextElement();
+
+        // First append the text element to the chart.
+        group.appendChild(text);
+
+        // Get the size.
+        const bbox = text.getBoundingClientRect();
+
+        text.setAttribute('x', this.chart.holder.clientWidth / 2);
+
+        // Have to offset 3 pixels otherwise it is not correctly centered.
+        // No idea why.
+        text.setAttribute('y', this.chart.holder.clientHeight / 2 + bbox.height / 2 - 3);
+
+        this.textNode = text;
     }
 
     /**
@@ -72,7 +90,7 @@ export default class CenterTarget extends Target {
         const hexagon = this.chart.document.createElementNS('http://www.w3.org/2000/svg', 'path');
 
         // Create the hexagon path.
-        let path = [
+        const path = [
             // Top Left Middle
             'M', x + width * 0.25, y,
 
@@ -96,7 +114,7 @@ export default class CenterTarget extends Target {
         hexagon.setAttribute('fill', '#FFF');
 
         if (this.chart.debug === true) {
-            hexagon.setAttribute('opacity', '.1');
+            hexagon.setAttribute('opacity', '.5');
         }
 
         hexagon.setAttribute('stroke-width', 1 * window.devicePixelRatio);
@@ -104,16 +122,18 @@ export default class CenterTarget extends Target {
         return hexagon;
     }
 
-    createTextElement(width, height) {
+    createTextElement() {
         const text = this.chart.document.createElementNS('http://www.w3.org/2000/svg', 'text');
 
         text.setAttribute('class', this.chart.createPrefixedIdentifier('total-count'));
         text.setAttribute('x', 0);
+
+        // For some reason need 3 px offset on the Y to get it centered correctly.
+        // Maybe has something to
         text.setAttribute('y', 0);
         text.setAttribute('fill', '#8B8B8B');
         text.setAttribute('text-anchor', 'middle');
-        // For some reason need 3 px offset on the Y to get it centered correctly.
-        text.setAttribute('transform', `translate(${width / 2}, ${(height / 2) + 3})`);
+
         text.textContent = '/';
 
         return text;
@@ -141,8 +161,8 @@ export default class CenterTarget extends Target {
 
         const cpoint = new Point(this.chart);
         cpoint.isStatic = true;
-        cpoint.x = this.x;
-        cpoint.y = this.y;
+        cpoint.x = this.xCenter;
+        cpoint.y = this.yCenter;
         cpoint.radius = this.chart.settings.hexagonSize - 5;
         points.push(cpoint);
 
