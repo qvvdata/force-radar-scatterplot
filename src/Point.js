@@ -32,6 +32,14 @@ export default class Point {
         this.isStatic = false;
 
         /**
+         * Is this point active?
+         * it means are we showing it in color or is it greyed out.
+         *
+         * @type {Boolean}
+         */
+        this.isActive = true;
+
+        /**
          * @type {ForceRadarScatterplot}
          */
         this.chart = chart;
@@ -52,7 +60,9 @@ export default class Point {
         this.target = null;
 
         /**
-         * TODO..
+         * Id of the group.
+         *
+         * @type {String}
          */
         this.group = null;
 
@@ -61,7 +71,7 @@ export default class Point {
          *
          * @type {String}
          */
-        this.color = '#8B8B8B';
+        this.color = null;
 
         /**
          * Radius for this specific point.
@@ -80,7 +90,50 @@ export default class Point {
          * @type {Number}
          */
         this.y = y || Math.random();
+
+        /**
+         * The svg node.
+         *
+         * @type {Object}
+         */
+        this.node = null;
     }
+
+    update(state, triggerForce = false) {
+        // Have the isactive be set before colour
+        // because it will override the colour
+        // and later if the color set we don't have sudden colour
+        // switches.
+        if (state.isActive !== undefined) {
+            this.setIsActive(state.isActive);
+
+            // We have not defined a new target so we need to update the statistics of
+            // this current target.
+            if (state.target === undefined) {
+                if (this.target !== null) {
+
+                    if (this.isActive === true) {
+                        this.target.updateStatistics(this, 1);
+                    } else {
+                        this.target.updateStatistics(this, -1);
+                    }
+                }
+            }
+        }
+
+        if (state.target !== undefined) {
+            this.setTarget(state.target, triggerForce);
+        }
+
+        if (state.group !== undefined) {
+            this.setGroup(state.group);
+        }
+
+        if (state.color !== undefined) {
+            this.setColor(state.color);
+        }
+    }
+
 
     /**
      * Getters
@@ -91,8 +144,18 @@ export default class Point {
      */
     getColor() {
         if (this.isStatic === false) {
-            return this.color;
-        } else if (this.isStatic === true && this.chart.debug === true) {
+            if (this.isActive === true) {
+                if (this.color !== null) {
+                    return this.color;
+                }
+
+                return this.chart.groups.get(this.group).color;
+            }
+
+            return this.chart.settings.point.inactiveColor;
+        }
+
+        if (this.isStatic === true && this.chart.debug === true) {
             return 'rgba(255, 0, 255, 0.5)';
         }
 
@@ -131,25 +194,56 @@ export default class Point {
     /**
      * @param {String|Target}
      */
-    setTarget(target, useTargetColor = false) {
-        if (target instanceof Target) {
-            this.target = target;
-        } else if (typeof target === 'string') {
-            target = this.chart.targets.get(target);
+    setTarget(target, triggerForceAlphaValue = true) {
+        // We only allow setting targets on non static points.
+        // Static points should stay in their place and not move around.
+        if (this.isStatic === false) {
+            let newTargetSet = false;
 
-            if (target !== null) {
-                this.target = target;
-
-                if (useTargetColor === true) {
-                    this.setColor(target.getColor());
+            if (target instanceof Target) {
+                if (this.target instanceof Target) {
+                    this.target.removePoint(this);
                 }
 
-                // Trigger the force so the point moves.
-                this.chart.triggerForce();
+                this.target = target;
+
+                this.target.addPoint(this);
+
+                newTargetSet = true;
+            } else if (typeof target === 'string') {
+                target = this.chart.targets.get(target);
+
+                if (target !== null) {
+                    if (this.target instanceof Target) {
+                        this.target.removePoint(this);
+                    }
+
+                    this.target = target;
+                    this.target.addPoint(this);
+
+                    newTargetSet = true;
+                } else {
+                    console.log(`Target with id; ${target} does not exist.`);
+                }
             } else {
-                console.log(`Target with id; ${id} does not exist.`);
+                throw new Error('Incorrect argument for target');
+            }
+
+            if (newTargetSet === true) {
+                if (typeof triggerForceAlphaValue === 'number') {
+                    this.chart.triggerForce(triggerForceAlphaValue);
+                } else if (triggerForceAlphaValue === true) {
+                    this.chart.triggerForce();
+                }
             }
         }
+    }
+
+    setTargetWithDelay(delay, target) {
+        setTimeout(
+            this.setTarget.bind(this, target, true),
+            delay
+        );
     }
 
     /**
@@ -157,7 +251,28 @@ export default class Point {
      */
     setColor(color) {
         this.color = color;
+        this.updateColor();
+    }
 
-        // TODO: Update the svg node.
+    /**
+     * @param {Object} node
+     */
+    setNode(node) {
+        this.node = node;
+    }
+
+    setGroup(groupId) {
+        this.group = groupId;
+    }
+
+    setIsActive(isActive) {
+        this.isActive = isActive;
+        this.updateColor();
+    }
+
+    updateColor() {
+        if (this.node !== null) {
+            this.node.style('fill', this.getColor());
+        }
     }
 }

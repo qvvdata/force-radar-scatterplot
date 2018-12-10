@@ -32,6 +32,17 @@ export default class CenterTarget extends Target {
         };
     }
 
+    updateStatistics(point, change) {
+        if (this.textNode !== null) {
+            const count = parseInt(this.textNode.textContent, 10);
+            this.textNode.textContent = count + change;
+        }
+    }
+
+    getStatsEl() {
+        return this.textNode;
+    }
+
     render() {
         const group = this.chart.document.createElementNS('http://www.w3.org/2000/svg', 'g');
         group.setAttribute('class', this.chart.createPrefixedIdentifier('total-count-holder'));
@@ -134,7 +145,15 @@ export default class CenterTarget extends Target {
         text.setAttribute('fill', '#8B8B8B');
         text.setAttribute('text-anchor', 'middle');
 
-        text.textContent = '/';
+        // Count only the active points.
+        let activeCount = 0;
+        Object.keys(this.points).forEach(key => {
+            if (this.points[key].isActive) {
+                activeCount++;
+            }
+        });
+
+        text.textContent = activeCount;
 
         return text;
     }

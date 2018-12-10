@@ -1,16 +1,16 @@
 Major:
 -------
-- Changing colours:
-    - Must loop over points and create node manually and set it in the point.
 
-- Updating the count in the center depending on the points.
-
-- Highlighting a point/points
+- Segementinge the target coordinates depending on the group so points mix less.
 
 Medium:
 -------
 
-- Discuss where and how to show statistics for the other targets.
+- Showing tooltips for points.
+
+- Grey out the statistics at the targets in the beginning?
+
+Insert polyfill for maps, or refactor without maps.
 
 Minor:
 -------

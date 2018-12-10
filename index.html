@@ -10,13 +10,109 @@
     <div id="controls">
         <button id="movePointsRandomly">Move points randomly</button>
         <button id="movePointsToRandomTarget">Move points to random target</button>
+        <button id="movePointsToCenter">Move points to center</button>
+
+        <button id="updateState">updateState</button>
+
+        <button id="toggleActivity">toggleActivity</button>
+
 
         <button id="changeColours">Change colours</button>
+
+
         <button id="reset">Reset</button>
+
+        <div id="delay-holder">
+            <span>Delay (ms)</span>
+            <input id="delay" value="0"/>
+        </div>
     </div>
 
     <div id="chart-holder"></div>
 
-    <script type="module" src="./example/js/example-app.js"></script>
+
+
+<script type="module">
+import './dist/ForceRadarScatterplot.js';
+
+// Create instance.
+const ForceRadarScatterplotInstance = new ForceRadarScatterplot.default(document, '#chart-holder');
+
+ForceRadarScatterplotInstance.init()
+    .fillWithRandomData()
+    .render();
+
+
+function getDelay() {
+    return parseInt(document.getElementById('delay').value);
+}
+
+window.document.querySelector('#movePointsRandomly').addEventListener('click', () => {
+    ForceRadarScatterplotInstance.movePointsRandomly(getDelay());
+});
+
+
+window.document.querySelector('#movePointsToRandomTarget').addEventListener('click', () => {
+    ForceRadarScatterplotInstance.movePointsToRandomTarget(getDelay());
+});
+
+window.document.querySelector('#movePointsToCenter').addEventListener('click', () => {
+    // ForceRadarScatterplotInstance.movePointsToCenter(point => {
+    //     if (point.getId() === 'point-0' || point.getId() === 'point-1') return true;
+    // }, getDelay());
+
+    ForceRadarScatterplotInstance.movePointsToCenter(null, getDelay());
+});
+
+window.document.querySelector('#changeColours').addEventListener('click', () => {
+    const colors = [
+        '#F00',
+        '#0F0',
+        '#FF0',
+        '#00F',
+        '#0FF',
+        '#3FC',
+        '#F90'
+    ];
+
+    const color = colors[Math.floor(Math.random() * colors.length - 1)];
+
+    ForceRadarScatterplotInstance.setColorToAllPoints(color);
+
+    // Set one point to be different.
+    ForceRadarScatterplotInstance.setColorToPoint('point-0', '#F0F');
+});
+
+window.document.querySelector('#updateState').addEventListener('click', () => {
+    const newStates = [];
+    ForceRadarScatterplotInstance.points.forEach(point => {
+        newStates.push({
+            id: point.getId(),
+            isActive: !point.isActive,
+            target: ForceRadarScatterplotInstance.getRandomTarget()
+        });
+    });
+
+    // Set one point to be different.
+    ForceRadarScatterplotInstance.updatePoints(newStates, 2, 0.12);
+});
+
+window.document.querySelector('#toggleActivity').addEventListener('click', () => {
+    const newStates = [];
+    ForceRadarScatterplotInstance.points.forEach(point => {
+        newStates.push({
+            id: point.getId(),
+            isActive: !point.isActive
+        });
+    });
+
+    // Set one point to be different.
+    ForceRadarScatterplotInstance.updatePoints(newStates, 2, false);
+});
+
+window.document.querySelector('#reset').addEventListener('click', () => {
+    ForceRadarScatterplotInstance.reset();
+});
+</script>
 </body>
 </html>

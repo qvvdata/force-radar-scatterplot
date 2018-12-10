@@ -71,10 +71,54 @@ export default class Target {
          */
         this.yCenter = 0;
 
+        this.statsEl = {};
+
+        /**
+         * Points currently at this target.
+         *
+         * @type {Object}
+         */
+        this.points = {};
+
         /**
          * @type {Object}
          */
         this.settings = Helpers.mergeDeep(this.defaultSettings, customSettings);
+    }
+
+
+    addPoint(point) {
+        this.points[point.getId()] = point;
+
+        if (point.isActive === true) {
+            this.updateStatistics(point, 1);
+        }
+    }
+
+    removePoint(point) {
+        delete this.points[point.getId()];
+
+        if (point.isActive === true) {
+            this.updateStatistics(point, -1);
+        }
+    }
+
+
+    updateStatistics(point, change) {
+        const statsEl = this.getStatsEl(point.group);
+
+        if (statsEl !== null) {
+            const count = parseInt(statsEl.innerHTML, 10);
+            statsEl.innerHTML = count + change;
+        }
+    }
+
+    getStatsEl(groupId) {
+        if (this.statsEl[groupId]) {
+            return this.statsEl[groupId];
+        }
+
+        return null;
     }
 
     /**
@@ -132,6 +176,12 @@ export default class Target {
         // Apply original style.
         this.element.setAttribute('style', style.join(';'));
 
+
+        const groupStatsElements = this.createStatisticsElements();
+        for (let i = 0; i < groupStatsElements.length; i++) {
+            this.element.appendChild(groupStatsElements[i]);
+        }
+
         this.xCenter = coords.xCenter;
         this.yCenter = coords.yCenter;
 
@@ -154,6 +204,51 @@ export default class Target {
             this.chart.holder.appendChild(centerEl);
         }
         return this;
+    }
+
+    /**
+     * We only support 2 groups at the moment.
+     *
+     * @return {Array}
+     */
+    createStatisticsElements() {
+        const elements = [];
+
+        let counter = 0;
+        this.chart.groups.forEach(group => {
+            if (counter < 2) {
+                // Holder.
+                const el = this.chart.document.createElement('div');
+                el.setAttribute('class', this.chart.createPrefixedIdentifier('target-stats-holder'));
+
+
+                const statsEl = this.chart.document.createElement('span');
+                statsEl.innerHTML = 0;
+                this.statsEl[group.id] = statsEl;
+
+
+                const styles = [
+                    'position: absolute',
+                    `color: ${group.color}`
+                ];
+
+                if (counter === 0) {
+                    styles.push('left: -25px');
+                } else {
+                    styles.push('right: -25px');
+                }
+
+                el.setAttribute('style', styles.join(';'));
+                el.appendChild(statsEl);
+
+                elements.push(el);
+            }
+
+
+            counter++;
+        });
+
+        return elements;
     }
 
     /**
@@ -354,6 +449,8 @@ export default class Target {
     }
 
     /**
+     *
+     * * Todo: Implement getting specific coordinate depending on group
      * You could extend these function return different target points depending
      * on the situation or already existing points inside.
      *
@@ -362,15 +459,26 @@ export default class Target {
      *
      * @return {Number}
      */
-    getX() {
-        return this.xCenter;
+    getX(groupId) {
+
+        if (groupId === '0-OVP') {
+            return this.xCenter - 10;
+        }
+
+        return this.xCenter + 10;
     }
 
     /**
-    * @return {Number}
-    */
-    getY() {
-        return this.yCenter;
+     * Todo: Implement getting specific coordinate depending on group
+     * @return {Number}
+     */
+    getY(groupId) {
+
+        if (groupId === '0-OVP') {
+            return this.yCenter - 10;
+        }
+
+        return this.yCenter + 10;
     }
 
     /**

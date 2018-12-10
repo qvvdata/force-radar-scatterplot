@@ -64,6 +64,8 @@ export default class ForceRadarScatterplot {
          * @type {Object}
          */
         this.defaultSettings = {
+            // Delay between points when setting targets.
+            delayBetweenPoints: 2,
             hexagonSize: 20,
             target: {
                 background: '#f3f3f3',
@@ -88,7 +90,8 @@ export default class ForceRadarScatterplot {
             point: {
                 radius: 2.5,
                 initAnimationDuration: 750,
-                initAnimationDelayFactorBetweenPoints: 3
+                initAnimationDelayFactorBetweenPoints: 3,
+                inactiveColor: '#8B8B8B'
             },
 
             collisionDetection: {
@@ -140,6 +143,13 @@ export default class ForceRadarScatterplot {
         this.points = new Map();
 
         /**
+         * Map of the groups.
+         *
+         * @type {Map}
+         */
+        this.groups = new Map();
+
+        /**
          * Contains the points that will be rendered in the visualisation.
          * It is not the same as the point property because
          * the rendered points will contain unvisible collision detection points
@@ -156,9 +166,12 @@ export default class ForceRadarScatterplot {
          */
         this.settings = Helpers.mergeDeep(this.defaultSettings, customSettings);
 
-        if (data !== null) {
-            this.setData(data);
-        }
+        /**
+         * Dependings on settings so it must come after it.
+         *
+         * @type {Target}
+         */
+        this.centerTarget = new CenterTarget(this, this.settings.centerTarget);
 
         /**
          * Has this chart been initialzed?
@@ -166,6 +179,11 @@ export default class ForceRadarScatterplot {
          * @type {Boolean}
          */
         this.initialized = false;
+
+        // Must go at the very end.
+        if (data !== null) {
+            this.setData(data);
+        }
 
         if (this.debug === true) {
             // Activate stats and log this class for use in the console.
@@ -301,22 +319,30 @@ export default class ForceRadarScatterplot {
             .friction(this.settings.force.friction)
             .on('tick', this.createForceTick(this.renderedPoints));
 
-        // Draw circle for each point.
-        this.layers.pointNodes = this.d3.select(this.layers.points).selectAll('circle')
-            .data(this.renderedPoints)
-            .enter()
-            .append('circle')
-            .attr('class', 'point')
-            .attr('id', d => d.getId())
-            .style('fill', d => d.getColor());
+        // Draw a circle for each point.
+        for (let i = 0; i < this.renderedPoints.length; i++) {
+            const renderPoint = this.renderedPoints[i];
+
+            const node = this.d3.select(this.layers.points)
+                .append('circle')
+                .datum(renderPoint)
+                .attr('class', this.createPrefixedIdentifier('point'))
+                .attr('id', d => d.getId())
+                .style('fill', d => d.getColor());
+
+            renderPoint.setNode(node);
+
+            // We only push the actuall circle svg node.
+            this.layers.pointNodes.push(node[0][0]);
+        }
 
         // Static points must have their radius set immediatly.
         // We generaly use them for collisions.
-        this.layers.pointNodes.filter(d => d.isStatic)
+        this.d3.selectAll(this.layers.pointNodes).filter(d => d.isStatic)
             .attr('r', d => d.getRadius());
 
-        // Normal data points will be animated in.
-        this.layers.pointNodes.filter(d => !d.isStatic)
+        // // Normal data points will be animated in.
+        this.d3.selectAll(this.layers.pointNodes).filter(d => !d.isStatic)
             .transition()
             .duration(this.settings.point.initAnimationDuration)
             .delay((d, i) => i * this.settings.point.initAnimationDelayFactorBetweenPoints)
@@ -386,7 +412,7 @@ export default class ForceRadarScatterplot {
                 cls.stats.begin();
             }
 
-            cls.layers.pointNodes
+            cls.d3.selectAll(cls.layers.pointNodes)
                 .each(cls.createGravityForce(cls.settings.force.gravity * e.alpha))
                 .each(cls.createCollisionDetection(points, 0.5))
                 .attr('fill', d => d.color)
@@ -412,8 +438,8 @@ export default class ForceRadarScatterplot {
             // Don't apply force to elements without a target.
             if (target === null) return;
 
-            d.x += (target.getX() - d.x) * alpha;
-            d.y += (target.getY() - d.y) * alpha;
+            d.x += (target.getX(d.group) - d.x) * alpha;
+            d.y += (target.getY(d.group) - d.y) * alpha;
         };
     }
 
@@ -571,8 +597,7 @@ export default class ForceRadarScatterplot {
         this.rawData = data;
 
         // Add the center target first.
-        const centerTarget = new CenterTarget(this, this.settings.centerTarget);
-        this.targets.set(centerTarget.getId(), centerTarget);
+        this.targets.set(this.centerTarget.getId(), this.centerTarget);
 
         // Create targets.
         for (let i = 0; i < data.targets.length; i++) {
@@ -582,15 +607,23 @@ export default class ForceRadarScatterplot {
             this.targets.set(target.getId(), target);
         }
 
+        // Create the groups.
+        for (let i = 0; i < data.groups.length; i++) {
+            const rawData = data.groups[i];
+
+            this.groups.set(rawData.id, rawData);
+        }
+
         // Create points.
         for (let i = 0; i < data.points.length; i++) {
             const rawData = data.points[i];
 
-
             const point = new Point(this, rawData.id);
             point.radius = this.settings.point.radius;
 
-            point.setTarget(this.targets.get('FRC_CENTER_TARGET'));
+            point.setTarget(this.targets.get('FRC_CENTER_TARGET'), false);
+            point.setGroup(rawData.group);
+            point.isActive = rawData.isActive;
 
             this.points.set(rawData.id, point);
         }
@@ -623,22 +656,6 @@ export default class ForceRadarScatterplot {
                 if (typeof point.id !== 'string') throw new Error('A point must have an id type of string');
             }
         }
-    }
-
-    updatePoint(id, callback) {
-        if (!this.pointMap[id]) {
-            console.log(`Trying to update non existing point with id: ${id}`);
-        } else {
-            callback(this.pointMap[id]);
-        }
-    }
-
-    updatePoints(callback) {
-        this.points.forEach(point => {
-            callback(point);
-        });
-
-        return this;
     }
 
     highlightPoint(id, color) {
@@ -694,7 +711,7 @@ export default class ForceRadarScatterplot {
                 title: 'PrivatWirtschaft'
             },
             {
-                id:  'Betrieb',
+                id: 'Betrieb',
                 title: 'Staatsnaher Betrieb'
             },
             {
@@ -744,29 +761,52 @@ export default class ForceRadarScatterplot {
 
         // Create the amount of desired targets.
         let targetPoolIndex = 0;
+        let targetIdPrefix = 0;
         for (let i = 0; i < targetCount; i++) {
             // Reset the target pool index to 0 if we go out of bounds.
             if (targetPoolIndex >= targetPool.length) {
                 targetPoolIndex = 0;
+                targetIdPrefix++;
             }
 
             const targetConfig = targetPool[targetPoolIndex];
-            data.targets.push(targetConfig);
 
+            // We set a new object otherwise we are using a reference.
+            data.targets.push({
+                id: `${targetIdPrefix}-${targetConfig.id}`,
+                title: targetConfig.title
+            });
 
             targetPoolIndex++;
         }
 
-        // for (let i = 0; i < groups; i++) {
-        //     const group = new Group(this, groupData[i]);
-        //     this.addGroup(groupData[i].id, group);
-        // }
+        let groupPoolIndex = 0;
+        let groupIdPrefix = 0;
+        for (let i = 0; i < groupCount; i++) {
+            // Reset the target pool index to 0 if we go out of bounds.
+            if (groupPool >= groupPool.length) {
+                groupPoolIndex = 0;
+                groupIdPrefix++;
+            }
+
+            const groupConfig = groupPool[groupPoolIndex];
+
+            data.groups.push({
+                id: `${groupIdPrefix}-${groupConfig.id}`,
+                title: groupConfig.id,
+                color: groupConfig.color
+            });
+
+            groupPoolIndex++;
+        }
 
         // const centerCoords = this.getCenterCoords();
         for (let i = 0; i < pointCount; i++) {
             const pointConfig = {
                 id: `point-${i}`,
-                target: 'FRC_CENTER_TARGET'
+                target: 'FRC_CENTER_TARGET',
+                group: data.groups[Math.floor(Math.random() * groupCount)].id,
+                isActive: false
             };
 
             data.points.push(pointConfig);
@@ -823,16 +863,15 @@ export default class ForceRadarScatterplot {
         rulerHorizontal.setAttribute('style', horizontalRuleStyles.join(';'));
         this.holder.appendChild(rulerHorizontal);
 
-
         rulerVertical.setAttribute('style', verticalRuleStyles.join(';'));
         this.holder.appendChild(rulerVertical);
 
         circleRuler.setAttribute('style', [
             'position: absolute',
-            'top: 10px',
-            'left: 10px',
-            'width: 480px',
-            'height: 480px',
+            'top: 0',
+            'left: 0',
+            'width: 100%',
+            'height: 100%',
             'border: 1px solid #F00',
             'border-radius: 500px'
         ].join(';'));
@@ -863,8 +902,8 @@ export default class ForceRadarScatterplot {
             const node = points[i];
 
             const target = new Target(this);
-            target.setX(Math.random() * 500);
-            target.setY(Math.random() * 500);
+            target.setX(Math.random() * this.holder.clientWidth);
+            target.setY(Math.random() * this.holder.clientHeight);
 
             node.setTarget(target);
         }
@@ -874,33 +913,133 @@ export default class ForceRadarScatterplot {
         return this;
     }
 
+    movePointsToCenter(filterFunc = null, delayBetweenPoints = null) {
+        let count = 0;
+
+        if (typeof delayBetweenPoints !== 'number') {
+            delayBetweenPoints = this.settings.delayBetweenPoints;
+        }
+
+        this.points.forEach(point => {
+            if (point.isStatic === false) {
+                let pointPassedFiltering = true;
+
+                if (typeof filterFunc === 'function' && filterFunc(point) !== true) {
+                    pointPassedFiltering = false;
+                }
+
+                if (pointPassedFiltering === true) {
+                    if (delayBetweenPoints > 0) {
+                        point.setTargetWithDelay(count * delayBetweenPoints, this.centerTarget, false);
+                        count++;
+                    } else {
+                        point.setTarget(this.centerTarget, false, false);
+                    }
+                }
+            }
+        });
+
+        // If there is a delay we will have to trigger the force on each point or
+        // else they will not complete if we just a global force call.
+        if (delayBetweenPoints === 0) {
+            this.triggerForce();
+        }
+
+        return this;
+    }
+
     /**
      * Moves points ta random selected target.
      *
      * @return {ForceRadarScatterplot}
      */
-    movePointsToRandomTarget() {
+    movePointsToRandomTarget(delayBetweenPoints = 0) {
         const targets = [...this.targets.values()];
+        let count = 0;
 
         this.points.forEach(point => {
             if (point.isStatic === false) {
                 const index = Math.floor(Math.random() * (targets.length));
                 const randomTarget = targets[index];
 
-                point.setTarget(randomTarget);
+                if (typeof delayBetweenPoints === 'number' && delayBetweenPoints > 0) {
+                    point.setTargetWithDelay(count * delayBetweenPoints, randomTarget, false);
+                    count++;
+                } else {
+                    point.setTarget(randomTarget, false, false);
+                }
             }
         });
 
-        this.triggerForce(0.11);
+        // If there is a delay we will have to trigger the force on each point or
+        // else they will not complete if we just a global force call.
+        if (delayBetweenPoints === 0) {
+            this.triggerForce();
+        }
 
         return this;
     }
 
-    changeColours(color) {
+    setColorToAllPoints(color) {
         const points = [...this.points.values()];
 
         for (let i = 0; i < points.length; i++) {
             points[i].setColor(color);
         }
+    }
+
+    setColorToPoint(pointId, color) {
+        if (typeof pointId === 'string') {
+            const point = this.points.get(pointId);
+
+            if (point !== null) {
+                point.setColor(color);
+            } else {
+                console.log(`Point with id: ${pointId} not found. Could not set the color.`);
+            }
+        } else {
+            throw new Error('Incorrect argument for point');
+        }
+    }
+
+    /**
+     * Array of new point settings.
+     *
+     * @param {Array.<Object>} pointStates
+     */
+    updatePoints(pointStates, delayBetweenPoints = 0, forceAlphaValue = 0.1) {
+        for (let i = 0; i < pointStates.length; i++) {
+            const pointState = pointStates[i];
+
+            const point = this.points.get(pointState.id);
+
+            if (point !== null) {
+                if (delayBetweenPoints > 0) {
+                    setTimeout(
+                        point.update.bind(point, pointState, true),
+                        i * delayBetweenPoints
+                    );
+                } else {
+                    point.update(pointState);
+                }
+            } else {
+                console.log('No ID given for point. Cannot update.', pointState);
+            }
+        }
+
+        // You don't need to wrap this in an if because when there is no delay
+        // this will run, and when there is a delay each point will call the force every time
+        // so one extra call won't matter.
+        if (forceAlphaValue !== false) {
+            this.triggerForce(forceAlphaValue);
+        }
+    }
+
+    getRandomTarget() {
+        const targets = [...this.targets.values()];
+
+        const index = Math.floor(Math.random() * targets.length);
+
+        return targets[index];
     }
 }

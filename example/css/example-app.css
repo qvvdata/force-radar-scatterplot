@@ -13,14 +13,18 @@ body {
     position: fixed;
     right: 5px;
     top: 5px;
+    width: 50%;
+    text-align: right;
 }
+    #delay-holder input {
+        width: 50px;
+    }
 
 #chart-holder {
-    /*border: 1px solid #000;*/
-    height: 80%;
+    height: 700px;
     left: 50%;
     position: absolute;
     top: 50%;
     transform: translate(-50%, -50%);
-    width: 80%;
+    width: 700px;
 }

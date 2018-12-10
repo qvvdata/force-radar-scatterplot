@@ -16,6 +16,10 @@ window.document.querySelector('#movePointsToRandomTarget').addEventListener('cli
     ForceRadarScatterplotInstance.movePointsToRandomTarget();
 });
 
+window.document.querySelector('#movePointsToCenter').addEventListener('click', () => {
+    ForceRadarScatterplotInstance.movePointsToCenter();
+});
+
 window.document.querySelector('#changeColours').addEventListener('click', () => {
 
     const colors = [
