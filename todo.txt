@@ -1,7 +1,7 @@
 Major:
 -------
 
-- Segementinge the target coordinates depending on the group so points mix less.
+- Font size is not being correctly applied to target elements and their statistics counterparts.
 
 Medium:
 -------
@@ -9,8 +9,6 @@ Medium:
 - Showing tooltips for points.
 
 - Grey out the statistics at the targets in the beginning?
-
-Insert polyfill for maps, or refactor without maps.
 
 Minor:
 -------

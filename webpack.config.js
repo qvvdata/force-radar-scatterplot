@@ -19,6 +19,7 @@ module.exports = (env, argv) => {
             filename: outputFile,
             library: libraryName,
             path: path.resolve(__dirname, 'dist'),
+            libraryExport: 'default',
             libraryTarget: 'umd',
             umdNamedDefine: true
         },

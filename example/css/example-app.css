@@ -5,6 +5,7 @@ body {
     background: #f3f3f3;
     font-family: Platform;
     margin: 0;
+    overflow: hidden;
     padding: 0;
     position: relative;
 }
@@ -21,10 +22,10 @@ body {
     }
 
 #chart-holder {
-    height: 700px;
+    height: 750px;
     left: 50%;
     position: absolute;
     top: 50%;
     transform: translate(-50%, -50%);
-    width: 700px;
+    width: 750px;
 }

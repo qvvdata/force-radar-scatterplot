@@ -42,6 +42,16 @@ export default class Helpers {
     }
 
     /**
+     * Convert degrees to radians.
+     *
+     * @param  {Number} angle
+     * @return {Number}
+     */
+    static degToRad(angle) {
+        return angle * Math.PI / 180;
+    }
+
+    /**
      * return the angle between two points.
      *
      * @param {number} x1       x position of first point

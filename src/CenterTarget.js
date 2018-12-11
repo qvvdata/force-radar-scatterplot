@@ -45,11 +45,11 @@ export default class CenterTarget extends Target {
 
     render() {
         const group = this.chart.document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        group.setAttribute('class', this.chart.createPrefixedIdentifier('total-count-holder'));
+        group.setAttribute('class', this.chart.createPrefixedIdentifier('center-target'));
         this.chart.layers.svg.appendChild(group);
 
         // Calculate dimensions for hexagon.
-        let size = this.chart.settings.hexagonSize;
+        let size = this.chart.settings.centerTarget.hexagonSize;
 
         // We must double the size on 4k monitors.
         if (Helpers.on4kScreen() === true) {
@@ -73,7 +73,70 @@ export default class CenterTarget extends Target {
         this.xCenter = this.chart.holder.clientWidth / 2;
         this.yCenter = this.chart.holder.clientHeight / 2;
 
+
+        // This must come at the end.
+        this.calculateGroupCenterTargetCoordinates(this.xCenter, this.yCenter, size);
+
+        if (this.chart.debug === true) {
+            this.renderDebugElements();
+        }
+
         return this;
+    }
+
+    renderDebugElements() {
+        // We have to offset the target bbox by the chart holder
+        // because the client returns global coordinates instead
+        // of local to the parent.
+        const bbox = this.iconNode.getBoundingClientRect();
+        const bboxChart = this.chart.holder.getBoundingClientRect();
+
+        const customBBox = {
+            left: bbox.left - bboxChart.left,
+            top: bbox.top - bboxChart.top,
+            width: bbox.width,
+            height: bbox.height
+        };
+
+        this.chart.drawBoundingBox(customBBox);
+
+        // Visualize the group center traget coordiantes
+        this.chart.groups.forEach(group => {
+            const el = this.chart.document.createElement('div');
+
+            el.setAttribute('style', [
+                'position: absolute',
+                `left: ${this.groupTargetCoordinates[group.id].x}px`,
+                `top: ${this.groupTargetCoordinates[group.id].y}px`,
+                'width: 10px',
+                'height: 10px',
+                'border-radius: 100px',
+                'background: rgba(0, 250, 0, .5)',
+                'z-index: 1000',
+                'transform: translate(-50%, -50%)'
+            ].join(';'));
+
+            this.chart.holder.appendChild(el);
+        });
+    }
+
+    calculateGroupCenterTargetCoordinates(xCenter, yCenter, size) {
+        let counter = 0;
+        const rotationStart = 360 / this.chart.groups.size;
+
+        this.chart.groups.forEach(group => {
+            const rotation = rotationStart + (counter * rotationStart);
+            const x = xCenter + (Math.cos(rotation * Math.PI / 180) * size);
+            const y = yCenter + (Math.sin(rotation * Math.PI / 180) * size);
+
+            this.groupTargetCoordinates[group.id] = {
+                x: x,
+                y: y,
+                angle: rotation
+            };
+
+            counter++;
+        });
     }
 
     renderTextElement(group) {
@@ -145,6 +208,9 @@ export default class CenterTarget extends Target {
         text.setAttribute('fill', '#8B8B8B');
         text.setAttribute('text-anchor', 'middle');
 
+
+        text.style.fontSize = this.chart.settings.centerTarget.fontSize;
+
         // Count only the active points.
         let activeCount = 0;
         Object.keys(this.points).forEach(key => {
@@ -182,7 +248,7 @@ export default class CenterTarget extends Target {
         cpoint.isStatic = true;
         cpoint.x = this.xCenter;
         cpoint.y = this.yCenter;
-        cpoint.radius = this.chart.settings.hexagonSize - 5;
+        cpoint.radius = this.chart.settings.centerTarget.hexagonSize - 5;
         points.push(cpoint);
 
 

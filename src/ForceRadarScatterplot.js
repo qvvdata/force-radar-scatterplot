@@ -64,45 +64,94 @@ export default class ForceRadarScatterplot {
          * @type {Object}
          */
         this.defaultSettings = {
-            // Delay between points when setting targets.
+            // Delay between points when they change state.
             delayBetweenPoints: 2,
-            hexagonSize: 20,
+
+            // Global settings for all target options.
             target: {
+                // Background color.
                 background: '#f3f3f3',
                 borderColor: '#8B8B8B',
                 borderRadius: 100,
-                borderWidth: 1,
+                borderWidth: 2,
+
+                // Text color.
                 color: '#8B8B8B',
+
+                // At which angle do we start placing targets.
+                // The algorithm will start from there in a clockwise direction.
                 startAngle: 90,
+
+                // This moves the target center coordinate for the groups to the outside (postive number)
+                // or to the center of the target element (negative). This allows you to move the target
+                // centers of groups closer together or more wide apart.
+                //
+                // this is a floatnumber and it's a relative to the segment size.
+                //
+                // a segement is the distance between the target points, they are all equal.
+                //
+                // 0 does nothing and the point in very center of the target, if there is one, is never moved.
+                groupTargetCenterOffset: 0.5,
+
                 width: 150,
                 height: 30
             },
 
+            // Global settings for the center target.
             centerTarget: {
+                // Text color.
                 color: '#8B8B8B',
-                fill: '#FFF'
+
+                // Fill of the hexagon.
+                fill: '#FFF',
+
+                // Font size of the number inside.
+                fontSize: 14,
+
+                // Size of the center hexagon icon.
+                // This will be multiplied by the window.devicePixelRatio property when rendered.
+                // We do not do it this in the settings because it will confuse the user if he ever inspects the settings and sees a different number
+                // than to the actual one he has set.
+                // On 4K screens we will also double te size because otherwise it is ridicuously small.
+                hexagonSize: 20,
             },
 
-            group: {
-
-            },
-
+            // Global options for points.
             point: {
                 radius: 2.5,
+
+                // Upon load we initialize the points with a radius of 0
+                // and animate them in to their size. This is the duration of that
+                // animation PER point.
                 initAnimationDuration: 750,
+
+                // Upon load we initialize the points with a radius of 0
+                // and animate them in to their size. This is the delay
+                // between each point for that animation
                 initAnimationDelayFactorBetweenPoints: 3,
+
+                // The color that will be applied to points when they are set to inactive.
                 inactiveColor: '#8B8B8B'
             },
 
+            // Collision detection options.
             collisionDetection: {
-                clusterPadding: 5,
+                // While this is used for collision detection
+                // this will actually effectively create padding
+                // between the points. You can view it as an
+                // invisible radius or bubble around the point.
                 nodePadding: 1
             },
 
-            // Play with these properties untill you get your desired effect.
+            // All the force properties work together to create a specific
+            // movement effect. It can be very difficult to get exactly what you want.
+            // I have set them to something that I think looks visually pleasing and natural
+            // but you can play with these properties until you get your desired effect.
             force: {
-                // The static points need to repulse the active points more so the point doesn't fly through it.
-                staticCollisionRepulseFactor: 1,
+                // This is increases the effect of the collision when points collide with the static poins (which we use only for collision detection).
+                // We set the effect slightly higher so there is less chance of points flying through.
+                // Still trying to figure why it keeps happening.
+                staticCollisionRepulseFactor: 1.2,
 
                 // Slows down the rate at which the node travels from its original position to its newly calculated position.
                 // Lower values = MORE friction!!!
@@ -111,8 +160,14 @@ export default class ForceRadarScatterplot {
                 // Strength of the attraction force towards it's destination point.
                 gravity: 0.051,
 
-                // “cooling parameter”that decrements at each tick and reduces the effect each of the forces play on the position of the nodes
-                startAlpha: 0.10
+                // “cooling parameter” that decrements at each tick
+                // and reduces the effect each of the forces play on the position of the nodes.
+                // Used only at the loading of the chart to put all the points in the middle.
+                startAlpha: 0.1,
+
+                // “cooling parameter” that decrements at each tick
+                // and reduces the effect each of the forces play on the position of the nodes.
+                alpha: 0.1
 
                 // friction slows the nodes down at each tick, and alpha slows
                 // them down between each tick. After a certain threshold is
@@ -174,6 +229,13 @@ export default class ForceRadarScatterplot {
         this.centerTarget = new CenterTarget(this, this.settings.centerTarget);
 
         /**
+         * Interval id for the looping animation.
+         *
+         * @type {Number}
+         */
+        this.loopingAnimationIntervalId = null;
+
+        /**
          * Has this chart been initialzed?
          *
          * @type {Boolean}
@@ -193,6 +255,7 @@ export default class ForceRadarScatterplot {
 
             this.drawRulers();
 
+            // Log the chart to the console for inspection.
             console.log(this);
         }
     }
@@ -257,7 +320,6 @@ export default class ForceRadarScatterplot {
     render() {
         this.renderTargets();
         this.renderPoints();
-
         return this;
     }
 
@@ -279,9 +341,6 @@ export default class ForceRadarScatterplot {
 
                 step++;
             }
-
-            // Create the collision points and add them to be rendered.
-            this.renderedPoints = this.renderedPoints.concat(target.createCollisionPoints());
         });
     }
 
@@ -294,17 +353,43 @@ export default class ForceRadarScatterplot {
         // Add collision points over the entire circle so points cannot escape and go out of bounds.
         this.renderedPoints = this.renderedPoints.concat(this.createCircleCollisionPoints());
 
+        // Add collision points for each target.
+        this.targets.forEach(target => {
+            // Create the collision points and add them to be rendered.
+            this.renderedPoints = this.renderedPoints.concat(target.createCollisionPoints());
+        });
+
         // We add the actual datapoints.
         this.renderedPoints = this.renderedPoints.concat([...this.points.values()]);
 
         // We assume that the points will always start in the center.
         // Start each point in a random point around the center
         // so it will fall to the center nicely on the startup.
+
+        let pointAngleAllowedVariation;
+        if (this.groups.size === 1) {
+            pointAngleAllowedVariation = 360;
+        } else {
+            pointAngleAllowedVariation = 360 / this.groups.size / 2;
+        }
         this.points.forEach(point => {
-            const randAngleInRadians = (Math.random() * 360) * Math.PI / 180;
             const offsetFromCenter = this.holder.clientWidth / 4;
-            point.x = (Math.cos(randAngleInRadians) * offsetFromCenter) + centerCoords.x;
-            point.y = (Math.sin(randAngleInRadians) * offsetFromCenter) + centerCoords.y;
+            // const randAngleInRadians = (Math.random() * 360) * Math.PI / 180;
+            // point.x = (Math.cos(randAngleInRadians) * offsetFromCenter) + centerCoords.x;
+            // point.y = (Math.sin(randAngleInRadians) * offsetFromCenter) + centerCoords.y;
+
+            const targetCenterAngle = this.centerTarget.getTargetCenterAngle(point.group);
+
+            // add ofset to the angle.
+            let angle;
+            if (Math.random() > 0.5) {
+                angle = targetCenterAngle + (Math.random() * pointAngleAllowedVariation);
+            } else {
+                angle = targetCenterAngle - (Math.random() * pointAngleAllowedVariation);
+            }
+
+            point.x = this.centerTarget.getX(point.group) + (Math.cos(Helpers.degToRad(angle)) * (50 + Math.random() * (offsetFromCenter - 50)));
+            point.y = this.centerTarget.getY(point.group) + (Math.sin(Helpers.degToRad(angle)) * (50 + Math.random() * (offsetFromCenter - 50)));
         });
 
         // We create the force.
@@ -328,6 +413,7 @@ export default class ForceRadarScatterplot {
                 .datum(renderPoint)
                 .attr('class', this.createPrefixedIdentifier('point'))
                 .attr('id', d => d.getId())
+                // .attr('r', d => d.getRadius())
                 .style('fill', d => d.getColor());
 
             renderPoint.setNode(node);
@@ -358,6 +444,18 @@ export default class ForceRadarScatterplot {
         this.force.start().alpha(this.settings.force.startAlpha);
     }
 
+    /**
+     * This creates a perimeter circle with collision points
+     * but currently I have disabled it because when having them
+     * sometimes points flyout   through the targets and then
+     * because of this perimeter they cannot get back in.
+     *
+     * I am still figuring out how to stop points getting
+     * pushed through targets or how to have them reset when
+     * they go out of bounds.
+     *
+     * @return {Array}
+     */
     createCircleCollisionPoints() {
         const points = [];
 
@@ -396,7 +494,8 @@ export default class ForceRadarScatterplot {
             points.push(point);
         }
 
-        return points;
+        return [];
+        // return points;
     }
 
     /**
@@ -461,11 +560,8 @@ export default class ForceRadarScatterplot {
         const quadtree = this.d3.geom.quadtree(points);
 
         const nodePadding = cls.settings.collisionDetection.nodePadding;
-        const clusterPadding = cls.settings.collisionDetection.clusterPadding;
         return function collisionDetection(d) {
-            let r = (d.radius * 2) + Math.max(nodePadding, clusterPadding);
-
-            // let r = d.radius + nodePadding;
+            let r = (d.radius * 2) + nodePadding;
 
             const nx1 = d.x - r;
             const nx2 = d.x + r;
@@ -477,27 +573,11 @@ export default class ForceRadarScatterplot {
                     const x = d.x - quad.point.x;
                     const y = d.y - quad.point.y;
                     let l = Math.sqrt(x * x + y * y);
+                    r = d.radius + quad.point.radius + nodePadding;
 
                     const staticRepulseFactor = cls.settings.force.staticCollisionRepulseFactor;
 
-                    r = d.radius + quad.point.radius + nodePadding;
-
-                    // Try to change the radius of the detection if the points have different targets
-                    // making them repulse eachother more.
-                    // if (d.getTarget() !== null && quad.point.getTarget() !== null) {
-                    //     if (d.target === quad.point.target) {
-                    //         r += nodePadding;
-                    //     } else {
-                    //         r += clusterPadding;
-                    //     }
-                    // } else {
-                    //     r += nodePadding;
-                    // }
-
-                    // Original algorithm for the code above.
-                    // r = d.radius + quad.point.radius + (d.target.id === quad.point.target.id ? nodePadding : clusterPadding);
-
-                    // points are directly stacked on top of eachother.
+                    // points are directly stacked on top of each other.
                     // move them away randomly.
                     if (l === 0) {
                         if (d.isStatic === false) {
@@ -539,21 +619,24 @@ export default class ForceRadarScatterplot {
 
     /**
      * Resets the data and re-rerenders.
+     * I turned this off because it is much more complex to reset this chart
+     * while it is not really neceassary right now.
+     *
+     * If you want to reset the chart you actually just move all the points back to the center.
      */
     reset() {
-        // Reset these properties or we will have double data.
-        this.renderedPoints = [];
+        // // Reset these properties or we will have double data.
+        // this.renderedPoints = [];
 
-        // You must do this before resetting the property!
-        // Remove all the point nodes.
-        this.layers.pointNodes.remove();
+        // // You must do this before resetting the property!
+        // // Remove all the point nodes.
+        // this.d3.selectAll(this.layers.pointNodes).remove();
 
-        this.layers.pointNodes = [];
-        this.points = new Map();
-        this.targets = new Map();
+        // this.layers.pointNodes = [];
+        // this.points = new Map();
 
-        this.setData(this.rawData);
-        this.render();
+        // this.setData(this.rawData);
+        // this.render();
     }
 
     /**
@@ -670,12 +753,43 @@ export default class ForceRadarScatterplot {
      * Trigger the force so the points move.
      *
      * @param  {Number} alpha
-     * @return {}
+     * @return {ForceRadarScatterplot}
      */
-    triggerForce(alpha = 0.1) {
+    triggerForce(alpha = null) {
+        if (typeof alphe !== 'number') {
+            alpha = this.settings.force.alpha;
+        }
+
         this.force.alpha(alpha);
 
         return this;
+    }
+
+    /**
+     * Start an infinite animation where a random point
+     * gets a random target assigned.
+     *
+     * @param {Number} intervalTimeInMs
+     */
+    startRandomLoopingAnimation(intervalTimeInMs = 50) {
+        const targets = Array.from(this.targets.values());
+        const points = Array.from(this.points.values());
+
+        // Each interval we select a random point and a random target
+        // and set the target to the point.
+        this.loopingAnimationIntervalId = setInterval(() => {
+            const randomTargetIndex = Math.floor(Math.random() * (targets.length));
+            const randomTarget = targets[randomTargetIndex];
+
+            const randomPointIndex = Math.floor(Math.random() * (points.length));
+            const randomPoint = points[randomPointIndex];
+
+            randomPoint.setTarget(randomTarget);
+        }, intervalTimeInMs);
+    }
+
+    stopRandomLoopingAnimation() {
+        clearInterval(this.loopingAnimationIntervalId);
     }
 
     /**
@@ -727,35 +841,43 @@ export default class ForceRadarScatterplot {
         const groupPool = [
             {
                 color: '#2b2d42',
-                id: 'OVP'
+                id: 'OVP',
+                title: 'OVP'
             },
             {
                 color: '#cf2123',
-                id: 'SPO'
+                id: 'SPO',
+                title: 'SPO'
             },
             {
                 color: '#007be5',
-                id: 'FPO'
+                id: 'FPO',
+                title: 'FPO'
             },
             {
                 color: '#ff89e7',
-                id: 'NEOS'
+                id: 'NEOS',
+                title: 'NEOS'
             },
             {
                 color: '#b9c5bd',
-                id: 'JETZT'
+                id: 'JETZT',
+                title: 'JETZT'
             },
             {
                 color: '#64a013',
-                id: 'GRUNE'
+                id: 'GRUNE',
+                title: 'GRUNE'
             },
             {
                 color: '#7c7c68',
-                id: 'OK'
+                id: 'OK',
+                title: 'OK'
             },
             {
                 color: '#c8c8c8',
-                id: 'SONSTIGE'
+                id: 'SONSTIGE',
+                title: 'SONSTIGE'
             },
         ];
 
@@ -793,7 +915,7 @@ export default class ForceRadarScatterplot {
 
             data.groups.push({
                 id: `${groupIdPrefix}-${groupConfig.id}`,
-                title: groupConfig.id,
+                title: groupConfig.title,
                 color: groupConfig.color
             });
 
@@ -806,7 +928,7 @@ export default class ForceRadarScatterplot {
                 id: `point-${i}`,
                 target: 'FRC_CENTER_TARGET',
                 group: data.groups[Math.floor(Math.random() * groupCount)].id,
-                isActive: false
+                isActive: true
             };
 
             data.points.push(pointConfig);
@@ -939,11 +1061,7 @@ export default class ForceRadarScatterplot {
             }
         });
 
-        // If there is a delay we will have to trigger the force on each point or
-        // else they will not complete if we just a global force call.
-        if (delayBetweenPoints === 0) {
-            this.triggerForce();
-        }
+        this.triggerForce();
 
         return this;
     }
@@ -953,9 +1071,13 @@ export default class ForceRadarScatterplot {
      *
      * @return {ForceRadarScatterplot}
      */
-    movePointsToRandomTarget(delayBetweenPoints = 0) {
+    movePointsToRandomTarget(delayBetweenPoints = null) {
         const targets = [...this.targets.values()];
         let count = 0;
+
+        if (typeof delayBetweenPoints !== 'number') {
+            delayBetweenPoints = this.settings.delayBetweenPoints;
+        }
 
         this.points.forEach(point => {
             if (point.isStatic === false) {
@@ -971,12 +1093,7 @@ export default class ForceRadarScatterplot {
             }
         });
 
-        // If there is a delay we will have to trigger the force on each point or
-        // else they will not complete if we just a global force call.
-        if (delayBetweenPoints === 0) {
-            this.triggerForce();
-        }
-
+        this.triggerForce();
         return this;
     }
 
@@ -1007,7 +1124,11 @@ export default class ForceRadarScatterplot {
      *
      * @param {Array.<Object>} pointStates
      */
-    updatePoints(pointStates, delayBetweenPoints = 0, forceAlphaValue = 0.1) {
+    updatePoints(pointStates, delayBetweenPoints = null, forceAlphaValue = 0.1) {
+        if (typeof delayBetweenPoints !== 'number') {
+            delayBetweenPoints = this.settings.delayBetweenPoints;
+        }
+
         for (let i = 0; i < pointStates.length; i++) {
             const pointState = pointStates[i];
 
@@ -1027,12 +1148,7 @@ export default class ForceRadarScatterplot {
             }
         }
 
-        // You don't need to wrap this in an if because when there is no delay
-        // this will run, and when there is a delay each point will call the force every time
-        // so one extra call won't matter.
-        if (forceAlphaValue !== false) {
-            this.triggerForce(forceAlphaValue);
-        }
+        this.triggerForce(forceAlphaValue);
     }
 
     getRandomTarget() {

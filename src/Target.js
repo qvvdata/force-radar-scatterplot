@@ -81,11 +81,17 @@ export default class Target {
         this.points = {};
 
         /**
+         * Coordinates for each group to target at.
+         *
+         * @type {Object}
+         */
+        this.groupTargetCoordinates = {};
+
+        /**
          * @type {Object}
          */
         this.settings = Helpers.mergeDeep(this.defaultSettings, customSettings);
     }
-
 
     addPoint(point) {
         this.points[point.getId()] = point;
@@ -102,7 +108,6 @@ export default class Target {
             this.updateStatistics(point, -1);
         }
     }
-
 
     updateStatistics(point, change) {
         const statsEl = this.getStatsEl(point.group);
@@ -129,7 +134,6 @@ export default class Target {
         const coords = this.calculateDrawingCoordinates();
         const rotation = this.calculateRotationAngle();
 
-        // Todo, use settsrs.
         const color = this.settings.color || this.chart.settings.target.color;
         const background = this.settings.background || this.chart.settings.target.background;
         const borderColor = this.settings.borderColor || this.chart.settings.target.borderColor;
@@ -166,6 +170,12 @@ export default class Target {
             `width: ${this.chart.settings.target.width}px`,
         ];
 
+        // When we are in debug mode we need to fade out the element a bit
+        // so we can see the coliision points underneath.
+        if (this.chart.debug === true) {
+            style.push('opacity: 0.6');
+        }
+
         // First apply the untransformed style so we can get it's untransformed bounding box.
         this.element.setAttribute('style', untransformedStyle.join(';'));
         this.chart.layers.targets.appendChild(this.element);
@@ -176,7 +186,7 @@ export default class Target {
         // Apply original style.
         this.element.setAttribute('style', style.join(';'));
 
-
+        // Create and append group statistics elements.
         const groupStatsElements = this.createStatisticsElements();
         for (let i = 0; i < groupStatsElements.length; i++) {
             this.element.appendChild(groupStatsElements[i]);
@@ -185,25 +195,104 @@ export default class Target {
         this.xCenter = coords.xCenter;
         this.yCenter = coords.yCenter;
 
+        // This must come at the end.
+        this.calculateGroupCenterTargetCoordinates(this.xCenter, this.yCenter, rotation);
 
         if (this.chart.debug === true) {
-            const centerEl = this.chart.document.createElement('div');
+            this.renderDebugElements();
+        }
 
-            centerEl.setAttribute('style', [
+        return this;
+    }
+
+    calculateGroupCenterTargetCoordinates(xCenter, yCenter, rotation) {
+        const segmentSize = this.untransformedBBox.width / this.chart.groups.size;
+        let counter = 0;
+        const startX = xCenter - this.untransformedBBox.width / 2;
+
+        // Get the kwadrant of the target for later use.
+        const kwadrant = this.calculateKwadrantOfAngle(this.angle);
+
+        this.chart.groups.forEach(group => {
+            let x = startX + (segmentSize / 2) + (counter * segmentSize);
+            let y;
+
+            // Move the x coordinates closer to the center depending on the offset.
+            if (x < xCenter) {
+                x += (this.chart.settings.target.groupTargetCenterOffset * segmentSize / 2);
+            } else {
+                x -= (this.chart.settings.target.groupTargetCenterOffset * segmentSize / 2);
+            }
+
+            // in the lower parts of the cirlce we have to offset the y to the top
+            if (kwadrant === 3 || kwadrant === 4) {
+                y = yCenter - this.untransformedBBox.height / 2;
+            } else { // In the upper parts of the chart they must go down.
+                y = yCenter + this.untransformedBBox.height / 2;
+            }
+
+            // Rotate the coordinates around so we get the correct positions.
+            const rotated = Helpers.rotate(xCenter, yCenter, x, y, rotation * -1);
+
+            this.groupTargetCoordinates[group.id] = {
+                x: rotated.x,
+                y: rotated.y
+            };
+
+            counter++;
+        });
+    }
+
+    renderDebugElements() {
+        const centerEl = this.chart.document.createElement('div');
+
+        centerEl.setAttribute('style', [
+            'position: absolute',
+            `left: ${this.xCenter}px`,
+            `top: ${this.yCenter}`,
+            'width: 10px',
+            'height: 10px',
+            'border-radius: 100px',
+            'background: rgba(0, 250, 0, .5)',
+            'z-index: 1000',
+            'transform: translate(-50%, -50%)'
+        ].join(';'));
+
+        this.chart.holder.appendChild(centerEl);
+
+        // We have to offset the target bbox by the chart holder
+        // because the client returns global coordinates instead
+        // of local to the parent.
+        const bbox = this.element.getBoundingClientRect();
+        const bboxChart = this.chart.holder.getBoundingClientRect();
+
+        const customBBox = {
+            left: bbox.left - bboxChart.left,
+            top: bbox.top - bboxChart.top,
+            width: bbox.width,
+            height: bbox.height
+        };
+
+        this.chart.drawBoundingBox(customBBox);
+
+        // Visualize the group center traget coordiantes
+        this.chart.groups.forEach(group => {
+            const el = this.chart.document.createElement('div');
+
+            el.setAttribute('style', [
                 'position: absolute',
-                `left: ${this.xCenter}px`,
-                `top: ${this.yCenter}`,
-                'width: 20px',
-                'height: 20px',
+                `left: ${this.groupTargetCoordinates[group.id].x}px`,
+                `top: ${this.groupTargetCoordinates[group.id].y}px`,
+                'width: 10px',
+                'height: 10px',
                 'border-radius: 100px',
                 'background: rgba(0, 250, 0, .5)',
                 'z-index: 1000',
                 'transform: translate(-50%, -50%)'
             ].join(';'));
 
-            this.chart.holder.appendChild(centerEl);
-        }
-        return this;
+            this.chart.holder.appendChild(el);
+        });
     }
 
     /**
@@ -218,32 +307,48 @@ export default class Target {
         this.chart.groups.forEach(group => {
             if (counter < 2) {
                 // Holder.
-                const el = this.chart.document.createElement('div');
-                el.setAttribute('class', this.chart.createPrefixedIdentifier('target-stats-holder'));
+                const holder = this.chart.document.createElement('div');
+                holder.setAttribute('class', this.chart.createPrefixedIdentifier('target-stats-holder'));
 
+                const valueEl = this.chart.document.createElement('span');
+                valueEl.setAttribute('class', this.chart.createPrefixedIdentifier('stats-value'));
+                valueEl.setAttribute('style', [
+                    'border-bottom: 1px solid',
+                    'display: inline-block',
+                    'width: 100%',
+                ].join(';'));
+                valueEl.innerHTML = 0;
 
-                const statsEl = this.chart.document.createElement('span');
-                statsEl.innerHTML = 0;
-                this.statsEl[group.id] = statsEl;
+                const label = this.chart.document.createElement('div');
+                label.setAttribute('class', this.chart.createPrefixedIdentifier('stats-label'));
+                label.innerHTML = group.title;
 
-
-                const styles = [
+                const holderStyles = [
                     'position: absolute',
-                    `color: ${group.color}`
+                    `color: ${group.color}`,
+                    'text-align: center'
                 ];
 
                 if (counter === 0) {
-                    styles.push('left: -25px');
+                    holderStyles.push('left: -25px');
+
+                    // This will keep the element correctly aligned no matter the width.
+                    holderStyles.push('transform: translate(-50%,0)');
                 } else {
-                    styles.push('right: -25px');
+                    holderStyles.push('right: -25px');
+
+                    // This will keep the element correctly aligned no matter the width.
+                    holderStyles.push('transform: translate(50%,0)');
                 }
 
-                el.setAttribute('style', styles.join(';'));
-                el.appendChild(statsEl);
+                holder.setAttribute('style', holderStyles.join(';'));
+                holder.appendChild(valueEl);
+                holder.appendChild(label);
 
-                elements.push(el);
+                elements.push(holder);
+
+                this.statsEl[group.id] = valueEl;
             }
-
 
             counter++;
         });
@@ -358,8 +463,11 @@ export default class Target {
 
             // We offset the center by the height so the target point is not inside the target
             // visualisation but on top of it.
-            xCenter: centerX + (x * (radius - this.chart.settings.target.height / 2)),
-            yCenter: centerY - (y * (radius - this.chart.settings.target.height / 2))
+            // xCenter: centerX + (x * (radius - this.chart.settings.target.height / 2)),
+            // yCenter: centerY - (y * (radius - this.chart.settings.target.height / 2))
+
+            xCenter: centerX + (x * (radius)),
+            yCenter: centerY - (y * (radius))
         };
     }
 
@@ -449,36 +557,41 @@ export default class Target {
     }
 
     /**
-     *
-     * * Todo: Implement getting specific coordinate depending on group
-     * You could extend these function return different target points depending
-     * on the situation or already existing points inside.
-     *
-     * This way you could for example move a point to points belonging to the same group,
-     * or spread them out over the whole target.
-     *
      * @return {Number}
      */
     getX(groupId) {
-
-        if (groupId === '0-OVP') {
-            return this.xCenter - 10;
+        if (this.groupTargetCoordinates[groupId]) {
+            return this.groupTargetCoordinates[groupId].x;
         }
 
-        return this.xCenter + 10;
+        return this.xCenter;
+    }
+
+    getTargetCenterAngle(groupId) {
+        if (this.groupTargetCoordinates[groupId]) {
+            return this.groupTargetCoordinates[groupId].angle;
+        }
+
+        return 0;
+    }
+
+    getTargetCenterAngleInRadians(groupId) {
+        if (this.groupTargetCoordinates[groupId]) {
+            return Helpers.degToRad(this.groupTargetCoordinates[groupId].angle);
+        }
+
+        return 0;
     }
 
     /**
-     * Todo: Implement getting specific coordinate depending on group
      * @return {Number}
      */
     getY(groupId) {
-
-        if (groupId === '0-OVP') {
-            return this.yCenter - 10;
+        if (this.groupTargetCoordinates[groupId]) {
+            return this.groupTargetCoordinates[groupId].y;
         }
 
-        return this.yCenter + 10;
+        return this.yCenter;
     }
 
     /**

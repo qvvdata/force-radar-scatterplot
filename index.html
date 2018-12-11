@@ -8,6 +8,8 @@
 </head>
 <body>
     <div id="controls">
+        <button id="startLoop">Start Loop animation</button>
+        <button id="stopLoop">Stop loop animation</button>
         <button id="movePointsRandomly">Move points randomly</button>
         <button id="movePointsToRandomTarget">Move points to random target</button>
         <button id="movePointsToCenter">Move points to center</button>
@@ -18,9 +20,6 @@
 
 
         <button id="changeColours">Change colours</button>
-
-
-        <button id="reset">Reset</button>
 
         <div id="delay-holder">
             <span>Delay (ms)</span>
@@ -36,7 +35,7 @@
 import './dist/ForceRadarScatterplot.js';
 
 // Create instance.
-const ForceRadarScatterplotInstance = new ForceRadarScatterplot.default(document, '#chart-holder');
+const ForceRadarScatterplotInstance = new ForceRadarScatterplot(document, '#chart-holder');
 
 ForceRadarScatterplotInstance.init()
     .fillWithRandomData()
@@ -110,8 +109,12 @@ window.document.querySelector('#toggleActivity').addEventListener('click', () =>
     ForceRadarScatterplotInstance.updatePoints(newStates, 2, false);
 });
 
-window.document.querySelector('#reset').addEventListener('click', () => {
-    ForceRadarScatterplotInstance.reset();
+window.document.querySelector('#startLoop').addEventListener('click', () => {
+    ForceRadarScatterplotInstance.startRandomLoopingAnimation(getDelay());
+});
+
+window.document.querySelector('#stopLoop').addEventListener('click', () => {
+    ForceRadarScatterplotInstance.stopRandomLoopingAnimation();
 });
 </script>
 </body>
