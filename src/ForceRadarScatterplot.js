@@ -100,7 +100,10 @@ export default class ForceRadarScatterplot {
                 groupTargetCenterOffset: 0,
 
                 width: 150,
-                height: 30
+                height: 30,
+
+                // The padding (in px) between Target box and Target statistics (left and right).
+                offsetStatistics: 25,
             },
 
             // Global settings for the center target.
@@ -250,6 +253,14 @@ export default class ForceRadarScatterplot {
          * @type {Boolean}
          */
         this.initialized = false;
+
+
+        /**
+         * All currently running timeouts for updatePoints
+         *
+         * @type {Array}
+         */
+        this.updatePoints_timeouts = [];
 
         // Must go at the very end.
         if (data !== null) {
@@ -1148,6 +1159,11 @@ export default class ForceRadarScatterplot {
             delayBetweenPoints = this.settings.delayBetweenPoints;
         }
 
+        while (this.updatePoints_timeouts.length > 0) {
+            const to = this.updatePoints_timeouts.pop();
+            clearTimeout(to);
+        }
+
         for (let i = 0; i < pointStates.length; i++) {
             const pointState = pointStates[i];
 
@@ -1155,10 +1171,10 @@ export default class ForceRadarScatterplot {
 
             if (point !== null) {
                 if (delayBetweenPoints > 0) {
-                    setTimeout(
+                    this.updatePoints_timeouts.push(setTimeout(
                         point.update.bind(point, pointState, true),
                         i * delayBetweenPoints
-                    );
+                    ));
                 } else {
                     point.update(pointState);
                 }

@@ -334,12 +334,12 @@ export default class Target {
                 ];
 
                 if (counter === 0) {
-                    holderStyles.push('left: -25px');
+                    holderStyles.push(`left: -${this.chart.settings.target.offsetStatistics}px`);
 
                     // This will keep the element correctly aligned no matter the width.
                     holderStyles.push('transform: translate(-50%,0)');
                 } else {
-                    holderStyles.push('right: -25px');
+                    holderStyles.push(`right: -${this.chart.settings.target.offsetStatistics}px`);
 
                     // This will keep the element correctly aligned no matter the width.
                     holderStyles.push('transform: translate(50%,0)');

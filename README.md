@@ -79,7 +79,10 @@ target: {
     groupTargetCenterOffset: 0.2,
 
     width: 150,
-    height: 30
+    height: 30,
+
+    // The padding (in px) between Target box and Target statistics (left and right).
+    offsetStatistics: 25.
 },
 
 // Global settings for the center target.
