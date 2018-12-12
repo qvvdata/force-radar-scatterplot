@@ -579,15 +579,18 @@ export default class ForceRadarScatterplot {
             const ny2 = d.y + r;
 
             quadtree.visit((quad, x1, y1, x2, y2) => {
+                const returnValue = (x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1);
+
                 if (quad.point && (quad.point !== d)) {
                     const x = d.x - quad.point.x;
                     const y = d.y - quad.point.y;
                     let l = Math.sqrt(x * x + y * y);
                     r = d.radius + quad.point.radius + nodePadding;
 
+
                     if (globalAlpha < cls.settings.collisionDetection.ignoreCollisionWhenAlphaLowerThan) {
                         if (d.target && quad.point.target && d.target !== quad.point.target) {
-                            return;
+                            return returnValue;
                         }
                     }
 
@@ -628,7 +631,7 @@ export default class ForceRadarScatterplot {
                     }
                 }
 
-                return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
+                return returnValue;
             });
         };
     }
