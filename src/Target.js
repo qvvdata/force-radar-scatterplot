@@ -39,7 +39,7 @@ export default class Target {
          *
          * @type {Number}
          */
-        this.collisionPrecision = 3 * window.devicePixelRatio;
+        this.collisionPrecision = 5 * window.devicePixelRatio;
 
         // On 4k screens we reduce the precision by making the dots bigger
         // otherwise it slows down too much.
