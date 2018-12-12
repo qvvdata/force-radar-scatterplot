@@ -272,7 +272,7 @@ export default class Point {
 
     updateColor() {
         if (this.node !== null) {
-            this.node.style('fill', this.getColor());
+            this.node.style.fill = this.getColor();
         }
     }
 }

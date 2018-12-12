@@ -181,7 +181,7 @@ force: {
 	// The data points.
 	points: {
 		id: String,
-		target: String, (Id of a target)
+		target: String, (Id of a target or FRC_CENTER_TARGET)
 		group: String,  (Id of a group)
 
 		// Active: point will be colored and count towards the statistics.
@@ -221,7 +221,7 @@ You don't need to reset each property, only the one that has changed.
 
 ```
 id: String, // Required
-target: String, (Id of a target)
+target: String, (Id of a target or FRC_CENTER_TARGET)
 group: String,  (Id of a group)
 
 // Active: point will be colored and count towards the statistics.

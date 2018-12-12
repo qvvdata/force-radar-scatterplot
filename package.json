@@ -2,7 +2,7 @@
   "name": "force-radar-scatterplot",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "src/ForceRadarScatterplot.js",
   "scripts": {
     "build": "webpack --mode=production",
     "dev": "webpack --mode=development --watch"
@@ -25,11 +25,19 @@
       "screen": true
     },
     "rules": {
-        "no-param-reassign": ["error", { "props": false }],
-        "no-return-assign": [0],
-        "no-continue": [0]
+      "no-param-reassign": [
+        "error",
+        {
+          "props": false
+        }
+      ],
+      "no-return-assign": [
+        0
+      ],
+      "no-continue": [
+        0
+      ]
     }
   },
-  "dependencies": {
-  }
+  "dependencies": {}
 }

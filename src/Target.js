@@ -305,7 +305,7 @@ export default class Target {
 
         let counter = 0;
         this.chart.groups.forEach(group => {
-            if (counter < 2) {
+            if (!group.ignoreStats) {
                 // Holder.
                 const holder = this.chart.document.createElement('div');
                 holder.setAttribute('class', this.chart.createPrefixedIdentifier('target-stats-holder'));

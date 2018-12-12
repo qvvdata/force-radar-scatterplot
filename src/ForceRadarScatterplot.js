@@ -249,9 +249,9 @@ export default class ForceRadarScatterplot {
 
         if (this.debug === true) {
             // Activate stats and log this class for use in the console.
-            this.stats = new Stats();
-            document.body.appendChild(this.stats.dom);
-            this.stats.showPanel(0);
+            //this.stats = new Stats();
+            //document.body.appendChild(this.stats.dom);
+            //this.stats.showPanel(0);
 
             this.drawRulers();
 
@@ -416,10 +416,10 @@ export default class ForceRadarScatterplot {
                 // .attr('r', d => d.getRadius())
                 .style('fill', d => d.getColor());
 
-            renderPoint.setNode(node);
+            renderPoint.setNode(node.node());
 
             // We only push the actuall circle svg node.
-            this.layers.pointNodes.push(node[0][0]);
+            this.layers.pointNodes.push(node.node());
         }
 
         // Static points must have their radius set immediatly.
@@ -508,7 +508,7 @@ export default class ForceRadarScatterplot {
         const cls = this;
         return function forceTick(e) {
             if (cls.debug === true) {
-                cls.stats.begin();
+                //cls.stats.begin();
             }
 
             cls.d3.selectAll(cls.layers.pointNodes)
@@ -519,7 +519,7 @@ export default class ForceRadarScatterplot {
                 .attr('cy', d => d.y);
 
             if (cls.debug === true) {
-                cls.stats.end();
+                //cls.stats.end();
             }
         };
     }
