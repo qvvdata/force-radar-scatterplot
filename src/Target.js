@@ -28,6 +28,7 @@ export default class Target {
             borderColor: null,
             borderRadius: null,
             borderWidth: null,
+            fontSize: null,
             id: null,
             color: null,
             title: ''
@@ -139,6 +140,7 @@ export default class Target {
         const borderColor = this.settings.borderColor || this.chart.settings.target.borderColor;
         const borderWidth = this.settings.borderWidth || this.chart.settings.target.borderWidth;
         const borderRadius = this.settings.borderRadius || this.chart.settings.target.borderRadius;
+        const fontSize = this.settings.fontSize || this.chart.settings.target.fontSize;
 
         const untransformedStyle = [
             'position: absolute',
@@ -156,6 +158,7 @@ export default class Target {
             `border-radius: ${borderRadius}px`,
             'border-style: solid',
 
+            `font-size: ${fontSize}px`,
             'display: flex',
             'align-items: center',
             'justify-content: center',
@@ -326,7 +329,8 @@ export default class Target {
                 const holderStyles = [
                     'position: absolute',
                     `color: ${group.color}`,
-                    'text-align: center'
+                    'text-align: center',
+                    `font-size: ${this.chart.settings.target.fontSizeStatistics}px`
                 ];
 
                 if (counter === 0) {
@@ -517,16 +521,22 @@ export default class Target {
 
         for (let i = 1; i < stepsWidth; i++) {
             for (let j = 0; j < stepsHeight; j++) {
-                // Skip the first and last circle of the row closest the center
-                // because they are out of bounds because the targets are rounded.
-                if (i === 1 && j === stepsHeight - 1) continue;
-                if (i === stepsWidth - 1 && j === stepsHeight - 1) continue;
+                let offsetY = 0;
+
+                // Move the first and last circle of the first row closest
+                // so it follows the rounded corners of the target.
+                if (this.chart.settings.target.borderRadius > 0) {
+                    if ((i === 1 && j === stepsHeight - 1)
+                        || (i === stepsWidth - 1 && j === stepsHeight - 1)) {
+                        offsetY = -2;
+                    }
+                }
 
                 const point = new Point(this.chart);
                 point.isStatic = true;
 
                 point.x = relativePos.left + (i * this.collisionPrecision);
-                point.y = relativePos.bottom - (BBox.height / 2) + (j * this.collisionPrecision);
+                point.y = relativePos.bottom - (BBox.height / 2) + (j * this.collisionPrecision) + offsetY;
 
                 const rotatedCoords = Helpers.rotate(targetCenterX, targetCenterY, point.x, point.y, this.angle - 90);
 

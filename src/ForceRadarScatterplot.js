@@ -78,6 +78,12 @@ export default class ForceRadarScatterplot {
                 // Text color.
                 color: '#8B8B8B',
 
+                // Font size of the label in the target.
+                fontSize: 16,
+
+                // Font size of the statistics labels.
+                fontSizeStatistics: 12,
+
                 // At which angle do we start placing targets.
                 // The algorithm will start from there in a clockwise direction.
                 startAngle: 90,
@@ -91,7 +97,7 @@ export default class ForceRadarScatterplot {
                 // a segement is the distance between the target points, they are all equal.
                 //
                 // 0 does nothing and the point in very center of the target, if there is one, is never moved.
-                groupTargetCenterOffset: 0.5,
+                groupTargetCenterOffset: 0,
 
                 width: 150,
                 height: 30
@@ -113,7 +119,7 @@ export default class ForceRadarScatterplot {
                 // We do not do it this in the settings because it will confuse the user if he ever inspects the settings and sees a different number
                 // than to the actual one he has set.
                 // On 4K screens we will also double te size because otherwise it is ridicuously small.
-                hexagonSize: 20,
+                hexagonSize: 40,
             },
 
             // Global options for points.
@@ -368,13 +374,13 @@ export default class ForceRadarScatterplot {
         // We assume that the points will always start in the center.
         // Start each point in a random point around the center
         // so it will fall to the center nicely on the startup.
-
         let pointAngleAllowedVariation;
         if (this.groups.size === 1) {
             pointAngleAllowedVariation = 360;
         } else {
             pointAngleAllowedVariation = 360 / this.groups.size / 2;
         }
+
         this.points.forEach(point => {
             const offsetFromCenter = this.holder.clientWidth / 4;
             // const randAngleInRadians = (Math.random() * 360) * Math.PI / 180;
@@ -430,7 +436,7 @@ export default class ForceRadarScatterplot {
         this.d3.selectAll(this.layers.pointNodes).filter(d => d.isStatic)
             .attr('r', d => d.getRadius());
 
-        // // Normal data points will be animated in.
+        // Normal data points will be animated in.
         this.d3.selectAll(this.layers.pointNodes).filter(d => !d.isStatic)
             .transition()
             .duration(this.settings.point.initAnimationDuration)
@@ -538,7 +544,7 @@ export default class ForceRadarScatterplot {
             const target = d.getTarget();
 
             // Don't apply force to elements without a target.
-            if (target === null) return;
+            if (target === null || d.isStatic === true) return;
 
             d.x += (target.getX(d.group) - d.x) * alpha;
             d.y += (target.getY(d.group) - d.y) * alpha;

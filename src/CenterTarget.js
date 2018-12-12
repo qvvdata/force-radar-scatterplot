@@ -49,19 +49,28 @@ export default class CenterTarget extends Target {
         this.chart.layers.svg.appendChild(group);
 
         // Calculate dimensions for hexagon.
-        let size = this.chart.settings.centerTarget.hexagonSize;
+        const size = this.chart.settings.centerTarget.hexagonSize;
 
-        // We must double the size on 4k monitors.
-        if (Helpers.on4kScreen() === true) {
-            size *= 2;
-        }
-
-        const width = size * window.devicePixelRatio;
-        const height = size * Math.sqrt(3) / 2 * window.devicePixelRatio;
+        const width = size;
+        const height = size * Math.sqrt(3) / 2;
 
         // Move the group to the center.
         const x = (this.chart.holder.clientWidth / 2) - (width / 2);
         const y = (this.chart.holder.clientHeight / 2) - (height / 2);
+
+
+        // We make the same icon but smaller so when we
+        // create the collision points it will follow this
+        // icon's path and the collision points will not
+        // overflow out of the real icon.
+        const collisionIcon = this.createHexagonElement(
+            x + this.collisionPrecision / 2,
+            y + this.collisionPrecision / 2,
+            width - this.collisionPrecision,
+            height - this.collisionPrecision
+        );
+        group.appendChild(collisionIcon);
+
 
         const icon = this.createHexagonElement(x, y, width, height);
         group.appendChild(icon);
@@ -69,13 +78,13 @@ export default class CenterTarget extends Target {
         // Render text element for statistics.
         this.renderTextElement(group);
 
+        this.collisionIconNode = collisionIcon;
         this.iconNode = icon;
         this.xCenter = this.chart.holder.clientWidth / 2;
         this.yCenter = this.chart.holder.clientHeight / 2;
 
-
         // This must come at the end.
-        this.calculateGroupCenterTargetCoordinates(this.xCenter, this.yCenter, size);
+        this.calculateGroupCenterTargetCoordinates(this.xCenter, this.yCenter, size / 2);
 
         if (this.chart.debug === true) {
             this.renderDebugElements();
@@ -225,7 +234,7 @@ export default class CenterTarget extends Target {
 
     /** @inheritDoc */
     createCollisionPoints() {
-        const totalLengthPath = this.iconNode.getTotalLength();
+        const totalLengthPath = this.collisionIconNode.getTotalLength();
         const points = [];
 
         const amountOfCollisionPoints = Math.ceil(totalLengthPath / this.collisionPrecision);
@@ -233,14 +242,14 @@ export default class CenterTarget extends Target {
         for (let i = 0; i < amountOfCollisionPoints; i++) {
             const point = new Point(this.chart);
             point.isStatic = true;
+            point.target = this;
+            point.radius = this.collisionPrecision / 2;
 
             const dist = i / amountOfCollisionPoints * totalLengthPath;
-            const coordsOnPath = this.iconNode.getPointAtLength(dist);
-
-            point.target = this;
+            const coordsOnPath = this.collisionIconNode.getPointAtLength(dist);
             point.x = coordsOnPath.x;
             point.y = coordsOnPath.y;
-            point.radius = this.collisionPrecision / 2;
+
             points.push(point);
         }
 
@@ -249,7 +258,9 @@ export default class CenterTarget extends Target {
         cpoint.isStatic = true;
         cpoint.x = this.xCenter;
         cpoint.y = this.yCenter;
-        cpoint.radius = this.chart.settings.centerTarget.hexagonSize - 5;
+
+        // We have to scale the radius by 0.85 so it does not overflow out of the icon.
+        cpoint.radius = (this.chart.settings.centerTarget.hexagonSize / 2) * 0.85;
         points.push(cpoint);
 
         return points;
