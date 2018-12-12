@@ -56,8 +56,8 @@ export default class CenterTarget extends Target {
             size *= 2;
         }
 
-        const width = size * window.devicePixelRatio;
-        const height = size * Math.sqrt(3) / 2 * window.devicePixelRatio;
+        const width = size * 2;
+        const height = size * Math.sqrt(3) / 2 * 2;
 
         // Move the group to the center.
         const x = (this.chart.holder.clientWidth / 2) - (width / 2);
