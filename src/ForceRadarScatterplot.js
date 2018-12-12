@@ -140,7 +140,10 @@ export default class ForceRadarScatterplot {
                 // this will actually effectively create padding
                 // between the points. You can view it as an
                 // invisible radius or bubble around the point.
-                nodePadding: 1
+                nodePadding: 1,
+
+                // This property explains itself.
+                ignoreCollisionWhenAlphaLowerThan: 0.075
             },
 
             // All the force properties work together to create a specific
@@ -513,7 +516,7 @@ export default class ForceRadarScatterplot {
 
             cls.d3.selectAll(cls.layers.pointNodes)
                 .each(cls.createGravityForce(cls.settings.force.gravity * e.alpha))
-                .each(cls.createCollisionDetection(points, 0.5))
+                .each(cls.createCollisionDetection(points, 0.5, e.alpha))
                 .attr('fill', d => d.color)
                 .attr('cx', d => d.x)
                 .attr('cy', d => d.y);
@@ -552,10 +555,11 @@ export default class ForceRadarScatterplot {
      * and experimentation.
      *
      * @param  {Array}    points
-     * @param  {Number}   alpha  Decay factor between ticks.
+     * @param  {Number}   alpha       It's called alpha but it's static. so it's basically a multiplying factor.
+     * @param  {Number}   globalAlpha Decay factor from the d3 force instance.
      * @return {Function}
      */
-    createCollisionDetection(points, alpha) {
+    createCollisionDetection(points, alpha, globalAlpha) {
         const cls = this;
         const quadtree = this.d3.geom.quadtree(points);
 
@@ -575,10 +579,16 @@ export default class ForceRadarScatterplot {
                     let l = Math.sqrt(x * x + y * y);
                     r = d.radius + quad.point.radius + nodePadding;
 
+                    if (globalAlpha < cls.settings.collisionDetection.ignoreCollisionWhenAlphaLowerThan) {
+                        if (d.target && quad.point.target && d.target !== quad.point.target) {
+                            return;
+                        }
+                    }
+
                     const staticRepulseFactor = cls.settings.force.staticCollisionRepulseFactor;
 
-                    // points are directly stacked on top of each other.
-                    // move them away randomly.
+                    // points are directly stacked on top of
+                    // each other move them away randomly.
                     if (l === 0) {
                         if (d.isStatic === false) {
                             d.x -= Math.random() / 20;

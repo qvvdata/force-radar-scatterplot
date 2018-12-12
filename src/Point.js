@@ -100,23 +100,21 @@ export default class Point {
     }
 
     update(state, triggerForce = false) {
-        // Have the isactive be set before colour
-        // because it will override the colour
-        // and later if the color set we don't have sudden colour
-        // switches.
-        if (state.isActive !== undefined) {
+        // Note 1:
+        //   - Have the isactive be set before colour because it will override the colour
+        //     and later if the color set we don't have sudden colour switches.
+        //
+        // Note 2:
+        //   - We do not trigger any updates if the new active state is the same as the
+        //     current otherwise we get all kinds of incorrect statistics counts.
+        if (state.isActive !== undefined && state.isActive !== this.isActive) {
             this.setIsActive(state.isActive);
 
-            // We have not defined a new target so we need to update the statistics of
-            // this current target.
-            if (state.target === undefined) {
-                if (this.target !== null) {
-
-                    if (this.isActive === true) {
-                        this.target.updateStatistics(this, 1);
-                    } else {
-                        this.target.updateStatistics(this, -1);
-                    }
+            if (this.target !== null) {
+                if (this.isActive === true) {
+                    this.target.updateStatistics(this, 1);
+                } else {
+                    this.target.updateStatistics(this, -1);
                 }
             }
         }
@@ -133,7 +131,6 @@ export default class Point {
             this.setColor(state.color);
         }
     }
-
 
     /**
      * Getters

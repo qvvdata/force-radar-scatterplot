@@ -11,7 +11,9 @@
         <button id="startLoop">Start Loop animation</button>
         <button id="stopLoop">Stop loop animation</button>
         <button id="movePointsRandomly">Move points randomly</button>
-        <button id="movePointsToRandomTarget">Move points to random target</button>
+        <button id="movePointsToRandomTarget">Move all points</button>
+
+        <button id="moveSomePoints">Move some points</button>
         <button id="movePointsToCenter">Move points to center</button>
 
         <button id="updateState">updateState</button>
@@ -53,6 +55,28 @@ window.document.querySelector('#movePointsRandomly').addEventListener('click', (
 
 window.document.querySelector('#movePointsToRandomTarget').addEventListener('click', () => {
     ForceRadarScatterplotInstance.movePointsToRandomTarget(getDelay());
+});
+
+window.document.querySelector('#moveSomePoints').addEventListener('click', () => {
+    const newStates = [];
+    const min = 15;
+    const max = 35;
+    const limit = min + Math.floor(Math.random() * max);
+    let count = 0;
+    const target = ForceRadarScatterplotInstance.getRandomTarget();
+
+    ForceRadarScatterplotInstance.points.forEach(point => {
+        if (count < limit && point.target.getId() === 'FRC_CENTER_TARGET') {
+            newStates.push({
+                id: point.getId(),
+                target: target.getId()
+            });
+
+            count++;
+        }
+    });
+
+    ForceRadarScatterplotInstance.updatePoints(newStates, 2);
 });
 
 window.document.querySelector('#movePointsToCenter').addEventListener('click', () => {

@@ -208,7 +208,6 @@ export default class CenterTarget extends Target {
         text.setAttribute('fill', '#8B8B8B');
         text.setAttribute('text-anchor', 'middle');
 
-
         text.style.fontSize = this.chart.settings.centerTarget.fontSize;
 
         // Count only the active points.
@@ -238,6 +237,7 @@ export default class CenterTarget extends Target {
             const dist = i / amountOfCollisionPoints * totalLengthPath;
             const coordsOnPath = this.iconNode.getPointAtLength(dist);
 
+            point.target = this;
             point.x = coordsOnPath.x;
             point.y = coordsOnPath.y;
             point.radius = this.collisionPrecision / 2;
@@ -245,12 +245,12 @@ export default class CenterTarget extends Target {
         }
 
         const cpoint = new Point(this.chart);
+        cpoint.target = this;
         cpoint.isStatic = true;
         cpoint.x = this.xCenter;
         cpoint.y = this.yCenter;
         cpoint.radius = this.chart.settings.centerTarget.hexagonSize - 5;
         points.push(cpoint);
-
 
         return points;
     }
