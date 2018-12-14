@@ -129,6 +129,15 @@ export default class ForceRadarScatterplot {
             point: {
                 radius: 2.5,
 
+                // Fill for highlighting points
+                highlightFill: '#FFF',
+
+                // Color for border when highlighting.
+                highlightStroke: '#000',
+
+                // Width for the border when highlighting.
+                highlightStrokeWidth: 1,
+
                 // Upon load we initialize the points with a radius of 0
                 // and animate them in to their size. This is the duration of that
                 // animation PER point.
@@ -141,6 +150,27 @@ export default class ForceRadarScatterplot {
 
                 // The color that will be applied to points when they are set to inactive.
                 inactiveColor: '#8B8B8B'
+            },
+
+            // Tooltips for points only.
+            tooltip: {
+                // Are we showing tooltips?
+                show: false,
+
+                // Padding.
+                padding: {
+                    top: 10,
+                    right: 10,
+                    bottom: 10,
+                    left: 10
+                },
+
+                // The formatter is a user supplied function that
+                // will return the html for the tooltip when the
+                // user hovers over a point.
+                formatter: function tooltipFormatter() {
+                    return 'To be implemented by the user';
+                }
             },
 
             // Collision detection options.
@@ -327,7 +357,17 @@ export default class ForceRadarScatterplot {
      */
     createTargetsLayer() {
         this.layers.targets = this.document.createElement('div');
-        this.layers.targets.setAttribute('style', 'position: absolute; left: 0; top: 0; height: 100%; width: 100%; z-index: 1;');
+
+        this.layers.targets.setAttribute('style', [
+            'position: absolute',
+            'left: 0px',
+            'top: 0px',
+            'height: 100',
+            'pointer-events: none', // Disable pointer events so on hover on points works.
+            'width: 100%',
+            'z-index: 1'
+        ].join(';'));
+
         this.layers.targets.setAttribute('class', this.createPrefixedIdentifier('targets'));
         this.holder.appendChild(this.layers.targets);
     }
@@ -433,10 +473,21 @@ export default class ForceRadarScatterplot {
                 .datum(renderPoint)
                 .attr('class', this.createPrefixedIdentifier('point'))
                 .attr('id', d => d.getId())
-                // .attr('r', d => d.getRadius())
                 .style('fill', d => d.getColor());
 
             renderPoint.setNode(node.node());
+
+            if (renderPoint.isStatic === false && this.settings.tooltip.show === true) {
+                node.on('mouseover', point => {
+                    this.highlightPoint(point);
+                    this.showTooltipForPoint(point);
+                });
+
+                node.on('mouseout', point => {
+                    point.unhighlight();
+                    this.hideTooltip();
+                });
+            }
 
             // We only push the actuall circle svg node.
             this.layers.pointNodes.push(node.node());
@@ -462,6 +513,88 @@ export default class ForceRadarScatterplot {
 
         // Start the force and set the start alpha.
         this.force.start().alpha(this.settings.force.startAlpha);
+    }
+
+    highlightPoint(pointInstanceOrId) {
+        let point = null;
+
+        // If a string is passed we assume id and try to get the point from the map.
+        if (typeof pointInstanceOrId === 'string') {
+            point = this.points.get(pointInstanceOrId);
+        } else {
+            point = pointInstanceOrId;
+        }
+
+        if (point !== null) {
+            point.highlight(
+                this.settings.point.highlightFill,
+                this.settings.point.highlightStroke,
+                this.settings.point.highlightStrokeWidth,
+            );
+        }
+    }
+
+    unhighlightPoint(pointInstanceOrId) {
+        let point = null;
+
+        if (typeof pointInstanceOrId === 'string') {
+            point = this.points.get(pointInstanceOrId);
+        } else {
+            point = pointInstanceOrId;
+        }
+
+        if (point !== null) {
+            point.unhighlight();
+        }
+    }
+
+    /**
+     * Show tooltip for a specific point.
+     *
+     * Todo:
+     *     - Have some kind of position placement algorhitm.
+     *     - Draw a line from the point to the tooltip.
+     *
+     * @param  {Point} point
+     */
+    showTooltipForPoint(point) {
+        const tooltipHtml = this.settings.tooltip.formatter(point);
+
+        if (this.layers.tooltip !== null) {
+            const centerCoords = this.getCenterCoords();
+            const tooltip = this.document.createElement('div');
+            tooltip.setAttribute('class', this.createPrefixedIdentifier('point-tooltip'));
+
+            tooltip.setAttribute('style', [
+                'pointer-events: none', // Very important if the tooltip ends up covering some points.
+                'background: rgba(255, 255, 255, 0.7)',
+                'display: none', // Start hidden.
+
+                `padding-top: ${this.settings.tooltip.padding.top}`,
+                `padding-right: ${this.settings.tooltip.padding.right}`,
+                `padding-bottom: ${this.settings.tooltip.padding.bottom}`,
+                `padding-left: ${this.settings.tooltip.padding.left}`,
+
+                'position: absolute',
+                `left: ${centerCoords.x}`,
+                `top: ${centerCoords.y / 2}`,
+                'transform: translate(-50%, -50%)'
+            ].join(';'));
+
+            this.holder.appendChild(tooltip);
+
+            this.layers.tooltip = tooltip;
+        }
+
+        // Set the HTML and after show the tooltip.
+        this.layers.tooltip.innerHTML = tooltipHtml;
+        this.layers.tooltip.style.display = 'block';
+    }
+
+    hideTooltip() {
+        if (this.layers.tooltip !== null) {
+            this.layers.tooltip.style.display = 'none';
+        }
     }
 
     /**
@@ -514,6 +647,10 @@ export default class ForceRadarScatterplot {
             points.push(point);
         }
 
+        // Atm I have disabled this because the points always
+        // fall behind the targets even with the perimeter and
+        // because of the perimetere they can return into the chart later
+        // so I disabled it until we find a better solution.
         return [];
         // return points;
     }
@@ -670,18 +807,6 @@ export default class ForceRadarScatterplot {
     }
 
     /**
-     * @param  {String} id
-     * @param  {Target} category
-     * @return {ForceRadarScatterplot}
-     */
-    addGroup(id, group) {
-        this.data.groups[id] = group;
-        this.data.groupsLength++;
-
-        return this;
-    }
-
-    /**
      * Create identifier with our set prefix.
      *
      * @param  {String} id Id.
@@ -768,14 +893,6 @@ export default class ForceRadarScatterplot {
                 const point = data.points[i];
                 if (typeof point.id !== 'string') throw new Error('A point must have an id type of string');
             }
-        }
-    }
-
-    highlightPoint(id, color) {
-        if (!this.pointMap[id]) {
-            console.log(`Trying to update non existing point with id: ${id}`);
-        } else {
-            this.pointMap.setColor(color);
         }
     }
 
@@ -872,12 +989,12 @@ export default class ForceRadarScatterplot {
             {
                 color: '#2b2d42',
                 id: 'OVP',
-                title: 'OVP'
+                title: 'ÖVP'
             },
             {
                 color: '#cf2123',
                 id: 'SPO',
-                title: 'SPO'
+                title: 'SPÖ'
             },
             {
                 color: '#007be5',

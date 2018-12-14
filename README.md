@@ -50,7 +50,7 @@ ForceRadarScatterplotInstance.init()
 
 ```
 // Delay between points when they change state.
-delayBetweenPoints:
+delayBetweenPoints: 2,
 
 // Global settings for all target options.
 target: {
@@ -58,10 +58,16 @@ target: {
     background: '#f3f3f3',
     borderColor: '#8B8B8B',
     borderRadius: 100,
-    borderWidth: 1,
+    borderWidth: 2,
 
     // Text color.
     color: '#8B8B8B',
+
+    // Font size of the label in the target.
+    fontSize: 16,
+
+    // Font size of the statistics labels.
+    fontSizeStatistics: 12,
 
     // At which angle do we start placing targets.
     // The algorithm will start from there in a clockwise direction.
@@ -76,13 +82,13 @@ target: {
     // a segement is the distance between the target points, they are all equal.
     //
     // 0 does nothing and the point in very center of the target, if there is one, is never moved.
-    groupTargetCenterOffset: 0.2,
+    groupTargetCenterOffset: 0,
 
     width: 150,
     height: 30,
 
     // The padding (in px) between Target box and Target statistics (left and right).
-    offsetStatistics: 25.
+    offsetStatistics: 25,
 },
 
 // Global settings for the center target.
@@ -90,7 +96,7 @@ centerTarget: {
     // Text color.
     color: '#8B8B8B',
 
-    // Fill of the hexagon
+    // Fill of the hexagon.
     fill: '#FFF',
 
     // Font size of the number inside.
@@ -101,12 +107,21 @@ centerTarget: {
     // We do not do it this in the settings because it will confuse the user if he ever inspects the settings and sees a different number
     // than to the actual one he has set.
     // On 4K screens we will also double te size because otherwise it is ridicuously small.
-    hexagonSize: 20,
+    hexagonSize: 40,
 },
 
 // Global options for points.
 point: {
     radius: 2.5,
+
+    // Fill for highlighting points
+    highlightFill: '#FFF',
+
+    // Color for border when highlighting.
+    highlightStroke: '#000',
+
+    // Width for the border when highlighting.
+    highlightStrokeWidth: 1,
 
     // Upon load we initialize the points with a radius of 0
     // and animate them in to their size. This is the duration of that
@@ -122,13 +137,37 @@ point: {
     inactiveColor: '#8B8B8B'
 },
 
+// Tooltips for points only.
+tooltip: {
+    // Are we showing tooltips?
+    show: false,
+
+    // Padding.
+    padding: {
+        top: 10,
+        right: 10,
+        bottom: 10,
+        left: 10
+    },
+
+    // The formatter is a user supplied function that
+    // will return the html for the tooltip when the
+    // user hovers over a point.
+    formatter: function tooltipFormatter() {
+        return 'To be implemented by the user';
+    }
+},
+
 // Collision detection options.
 collisionDetection: {
     // While this is used for collision detection
     // this will actually effectively create padding
     // between the points. You can view it as an
     // invisible radius or bubble around the point.
-    nodePadding: 1
+    nodePadding: 1,
+
+    // This property explains itself.
+    ignoreCollisionWhenAlphaLowerThan: 0.075
 },
 
 // All the force properties work together to create a specific
@@ -148,13 +187,13 @@ force: {
     // Strength of the attraction force towards it's destination point.
     gravity: 0.051,
 
-    // “cooling parameter” that decrements at each tick and
-    // reduces the effect each of the forces play on the position of the nodes.
+    // “cooling parameter” that decrements at each tick
+    // and reduces the effect each of the forces play on the position of the nodes.
     // Used only at the loading of the chart to put all the points in the middle.
-    startAlpha: 0.10,
+    startAlpha: 0.1,
 
-    // “cooling parameter” that decrements at each tick and
-    // reduces the effect each of the forces play on the position of the nodes.
+    // “cooling parameter” that decrements at each tick
+    // and reduces the effect each of the forces play on the position of the nodes.
     alpha: 0.1
 
     // friction slows the nodes down at each tick, and alpha slows

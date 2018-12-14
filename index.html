@@ -36,8 +36,28 @@
 <script type="module">
 import './dist/ForceRadarScatterplot.js';
 
+const settings = {
+    tooltip: {
+        show: true,
+        formatter: function a(point) {
+            // <h3>${d.name}</h3>
+            // <p>Kabinette: ${d.kabinette}</p>
+            // <p>Wechsel: ${d.wechsel_pretty} – ${d.beschreibung}</p>
+            // ${d['Partei des Kabinetts'] != 'uneindeutig'?`<p>Arbeitete nur in Kabinetten der ${d['Partei des Kabinetts']}</p>`:``}
+
+            const text = `
+                <h6>${point.id}</h6>
+                <p>Kabinnete: ${point.id}</p>
+                <p>Wechsel: ${point.id} – ${point.id}</p>
+            `;
+
+            return text;
+        }
+    }
+};
+
 // Create instance.
-const ForceRadarScatterplotInstance = new ForceRadarScatterplot(document, '#chart-holder');
+const ForceRadarScatterplotInstance = new ForceRadarScatterplot(document, '#chart-holder', settings);
 
 ForceRadarScatterplotInstance.init()
     .fillWithRandomData()
@@ -45,7 +65,7 @@ ForceRadarScatterplotInstance.init()
 
 
 function getDelay() {
-    return parseInt(document.getElementById('delay').value);
+    return parseInt(document.getElementById('delay').value, 10);
 }
 
 window.document.querySelector('#movePointsRandomly').addEventListener('click', () => {

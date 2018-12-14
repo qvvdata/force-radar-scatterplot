@@ -278,7 +278,7 @@ export default class Target {
 
         this.chart.drawBoundingBox(customBBox);
 
-        // Visualize the group center traget coordiantes
+        // Visualize the group center target coordinates.
         this.chart.groups.forEach(group => {
             const el = this.chart.document.createElement('div');
 
@@ -318,31 +318,36 @@ export default class Target {
                 valueEl.setAttribute('style', [
                     'border-bottom: 1px solid',
                     'display: inline-block',
+                    'padding-bottom: 2px',
                     'width: 100%',
                 ].join(';'));
                 valueEl.innerHTML = 0;
 
                 const label = this.chart.document.createElement('div');
                 label.setAttribute('class', this.chart.createPrefixedIdentifier('stats-label'));
+                label.setAttribute('style', [
+                    'padding-top: 2px',
+                ].join(';'));
                 label.innerHTML = group.title;
 
                 const holderStyles = [
-                    'position: absolute',
                     `color: ${group.color}`,
+                    `font-size: ${this.chart.settings.target.fontSizeStatistics}px`,
+                    'position: absolute',
                     'text-align: center',
-                    `font-size: ${this.chart.settings.target.fontSizeStatistics}px`
+                    'top: 50%'
                 ];
 
                 if (counter === 0) {
                     holderStyles.push(`left: -${this.chart.settings.target.offsetStatistics}px`);
 
                     // This will keep the element correctly aligned no matter the width.
-                    holderStyles.push('transform: translate(-50%,0)');
+                    holderStyles.push('transform: translate(-50%, -50%)');
                 } else {
                     holderStyles.push(`right: -${this.chart.settings.target.offsetStatistics}px`);
 
                     // This will keep the element correctly aligned no matter the width.
-                    holderStyles.push('transform: translate(50%,0)');
+                    holderStyles.push('transform: translate(50%, -50%)');
                 }
 
                 holder.setAttribute('style', holderStyles.join(';'));

@@ -243,6 +243,23 @@ export default class Point {
         );
     }
 
+    highlight(fill, stroke, strokeWidth) {
+        if (this.node !== null) {
+            this.node.style.fill = fill;
+            this.node.style.stroke = stroke;
+            this.node.style.strokeWidth = strokeWidth;
+        }
+    }
+
+    unhighlight() {
+        if (this.node !== null) {
+            this.node.style.stroke = '';
+            this.node.style.strokeWidth = 0;
+        }
+
+        this.updateColor();
+    }
+
     /**
      * @param {String}
      */
