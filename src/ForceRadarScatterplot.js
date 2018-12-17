@@ -576,8 +576,8 @@ export default class ForceRadarScatterplot {
                 `padding-left: ${this.settings.tooltip.padding.left}`,
 
                 'position: absolute',
-                `left: ${centerCoords.x}`,
-                `top: ${centerCoords.y / 2}`,
+                `left: ${centerCoords.x}px`,
+                `top: ${centerCoords.y / 2}px`,
                 'transform: translate(-50%, -50%)'
             ].join(';'));
 
