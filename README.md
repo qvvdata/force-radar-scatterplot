@@ -2,6 +2,8 @@
 
 A radar scatterplot chart powered by d3.force.
 
+![img](./readme.gif)
+
 ## Basic usage
 
 ### Install via npm
@@ -19,7 +21,7 @@ You can also import the unminified file if you want to see the code. The minifie
 
 ### Instantiate the class
 
-**Note: your holder must have a square format defined or the chart will not functiona properly.**
+**Note: your holder must have a square format defined or the chart will not function properly.**
 
 ```
 const ForceRadarScatterplotInstance = new ForceRadarScatterplot(
@@ -288,4 +290,8 @@ Stops the looping animation by clearing the interval id. Remember that even thou
 will still be moving because they have not reached their destination or because some previous intervals have not yet
 been called by javascript.
 
-### Debug / Helper
+## License
+
+[Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/)
+
+See Licese.md for more info.
