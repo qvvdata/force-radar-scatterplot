@@ -40,6 +40,8 @@ export default class ForceRadarScatterplot {
          */
         this.prefix = 'frc';
 
+        this.holderSelector = holderSelector;
+
         /**
          * The general holder for the entire visualisation.
          *
@@ -327,6 +329,8 @@ export default class ForceRadarScatterplot {
      * Sets up all the necessary layers for the visualisation.
      */
     setupLayers() {
+        this.d3.select(this.holderSelector).selectAll('*').remove();
+
         this.createSVGLayer();
         this.createPointsLayer();
         this.createTargetsLayer();
@@ -408,7 +412,12 @@ export default class ForceRadarScatterplot {
      * Renders all the points.
      */
     renderPoints() {
-        const centerCoords = this.getCenterCoords();
+        if (this.force !== null) {
+            this.force.stop();
+            this.force = null;
+        }
+
+        this.renderedPoints = [];
 
         // Add collision points over the entire circle so points cannot escape and go out of bounds.
         this.renderedPoints = this.renderedPoints.concat(this.createCircleCollisionPoints());
@@ -451,6 +460,7 @@ export default class ForceRadarScatterplot {
             point.x = this.centerTarget.getX(point.group) + (Math.cos(Helpers.degToRad(angle)) * (50 + Math.random() * (offsetFromCenter - 50)));
             point.y = this.centerTarget.getY(point.group) + (Math.sin(Helpers.degToRad(angle)) * (50 + Math.random() * (offsetFromCenter - 50)));
         });
+
 
         // We create the force.
         // Keep the gravity and charge to 0.
@@ -600,7 +610,7 @@ export default class ForceRadarScatterplot {
     /**
      * This creates a perimeter circle with collision points
      * but currently I have disabled it because when having them
-     * sometimes points flyout   through the targets and then
+     * sometimes points flyout through the targets and then
      * because of this perimeter they cannot get back in.
      *
      * I am still figuring out how to stop points getting
@@ -830,6 +840,11 @@ export default class ForceRadarScatterplot {
      * Setters
      */
     setData(data) {
+        this.targets.clear();
+        this.groups.clear();
+        this.points.clear();
+        this.centerTarget.clearPoints();
+
         this.checkDataIntegrity(data);
 
         this.rawData = data;
@@ -949,7 +964,7 @@ export default class ForceRadarScatterplot {
      * @param  {Number} pointCount
      * @return {ForceRadarScatterplot}
      */
-    fillWithRandomData(targetCount = 6, groupCount = 2, pointCount = 355) {
+    fillWithRandomData(targetCount = 12, groupCount = 2, pointCount = 355) {
         if (this.initialized === false) throw new Error('You must initialize the class before filling with data.');
 
         const data = {
@@ -961,27 +976,39 @@ export default class ForceRadarScatterplot {
         const targetPool = [
             {
                 id: 'Verwaltung',
-                title: 'Verwaltung'
+                title: 'Verwaltung',
+                showFloatingLabel: false,
+                showStatistics: false
             },
             {
                 id: 'Sonstige',
-                title: 'Sonstige'
+                title: 'Sonstige',
+                showFloatingLabel: false,
+                showStatistics: false
             },
             {
                 id: 'PrivatWirtschaft',
-                title: 'PrivatWirtschaft'
+                title: 'PrivatWirtschaft',
+                showFloatingLabel: false,
+                showStatistics: false
             },
             {
                 id: 'Betrieb',
-                title: 'Staatsnaher Betrieb'
+                title: 'Staatsnaher Betrieb',
+                showFloatingLabel: false,
+                showStatistics: false
             },
             {
                 id: 'Partei/Parlament',
-                title: 'Partei/Parlament'
+                title: 'Partei/Parlament',
+                showFloatingLabel: false,
+                showStatistics: false
             },
             {
                 id: 'Kammer',
-                title: 'Kammer'
+                title: 'Kammer',
+                showFloatingLabel: false,
+                showStatistics: false
             }
         ];
 
@@ -1043,7 +1070,9 @@ export default class ForceRadarScatterplot {
             // We set a new object otherwise we are using a reference.
             data.targets.push({
                 id: `${targetIdPrefix}-${targetConfig.id}`,
-                title: targetConfig.title
+                title: targetConfig.title,
+                showFloatingLabel: targetConfig.showFloatingLabel,
+                showStatistics: targetConfig.showStatistics
             });
 
             targetPoolIndex++;
@@ -1266,6 +1295,17 @@ export default class ForceRadarScatterplot {
         }
     }
 
+    setState(state) {
+        if (state.points) {
+            this.updatePoints(state.points);
+        }
+
+        if (state.targets) {
+            this.updateTargets(state.targets);
+        }
+    }
+
+
     /**
      * Array of new point settings.
      *
@@ -1301,6 +1341,19 @@ export default class ForceRadarScatterplot {
         }
 
         this.triggerForce(forceAlphaValue);
+    }
+
+    /**
+     * @param {Array.<Objects>} states
+     */
+    updateTargets(states) {
+        for (let i = 0; i < states.length; i++) {
+            const state = states[i];
+
+            const target = this.targets.get(state.id);
+
+            target.setState(state);
+        }
     }
 
     getRandomTarget() {

@@ -25,12 +25,9 @@
       "screen": true
     },
     "rules": {
-      "no-param-reassign": [
-        "error",
-        {
-          "props": false
-        }
-      ],
+      "no-param-reassign": 0,
+      "no-lonely-if": 0,
+      "prefer-template": 0,
       "no-return-assign": [
         0
       ],

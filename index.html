@@ -8,6 +8,10 @@
 </head>
 <body>
     <div id="controls">
+
+        <button id="toggleFloatingLabels">Toggle Floating Labels</button>
+
+        <button id="reinit">Re-init</button>
         <button id="startLoop">Start Loop animation</button>
         <button id="stopLoop">Stop loop animation</button>
         <button id="movePointsRandomly">Move points randomly</button>
@@ -57,7 +61,7 @@ const settings = {
 };
 
 // Create instance.
-const ForceRadarScatterplotInstance = new ForceRadarScatterplot(document, '#chart-holder', settings);
+let ForceRadarScatterplotInstance = new ForceRadarScatterplot(document, '#chart-holder', settings);
 
 ForceRadarScatterplotInstance.init()
     .fillWithRandomData()
@@ -159,6 +163,36 @@ window.document.querySelector('#startLoop').addEventListener('click', () => {
 
 window.document.querySelector('#stopLoop').addEventListener('click', () => {
     ForceRadarScatterplotInstance.stopRandomLoopingAnimation();
+});
+
+window.document.querySelector('#reinit').addEventListener('click', () => {
+    ForceRadarScatterplotInstance = null;
+
+    ForceRadarScatterplotInstance = new ForceRadarScatterplot(document, '#chart-holder', settings);
+
+    // ForceRadarScatterplotInstance = ForceRadarScatterplotInstance2;
+
+    ForceRadarScatterplotInstance.init()
+        .fillWithRandomData(
+            2 + Math.floor(Math.random() * 10),
+            1 + Math.floor(Math.random() * 7))
+        .render();
+});
+
+window.document.querySelector('#toggleFloatingLabels').addEventListener('click', () => {
+    const newTargetStates = [];
+    ForceRadarScatterplotInstance.targets.forEach(target => {
+
+        newTargetStates.push({
+            id: target.settings.id,
+            showFloatingLabel: !target.settings.showFloatingLabel,
+            floatingLabelText: Math.round(Math.random() * 100) + '%'
+        });
+    });
+
+    ForceRadarScatterplotInstance.setState({
+        targets: newTargetStates
+    });
 });
 </script>
 </body>

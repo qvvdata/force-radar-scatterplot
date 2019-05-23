@@ -24,6 +24,24 @@ export default class Target {
          * @type {Object}
          */
         this.defaultSettings = {
+            /**
+             * FLoating label.
+             */
+
+            // Show or not?
+            showFloatingLabel: false,
+
+            // Inside = Inside the circle
+            // Outside = Outside the circle
+            floatingLabelPosition: 'inside', // 'inside' / 'outside'
+
+            // Text for the floating label.
+            floatingLabelText: '',
+
+            /**
+             * Other settings.
+             */
+            showStatistics: true,
             background: null,
             borderColor: null,
             borderRadius: null,
@@ -92,6 +110,30 @@ export default class Target {
          * @type {Object}
          */
         this.settings = Helpers.mergeDeep(this.defaultSettings, customSettings);
+
+        this.floatingLabel = null;
+    }
+
+    setState(state) {
+        if (state.floatingLabelText) {
+            this.settings.floatingLabelText = state.floatingLabelText;
+
+            if (this.floatingLabel !== null) {
+                this.floatingLabel.innerHTML = state.floatingLabelText;
+            }
+        }
+
+        if (typeof state.showFloatingLabel === 'boolean') {
+            this.settings.showFloatingLabel = state.showFloatingLabel;
+
+            if (this.floatingLabel !== null) {
+                if (state.showFloatingLabel === true) {
+                    this.floatingLabel.style.display = 'block';
+                } else {
+                    this.floatingLabel.style.display = 'none';
+                }
+            }
+        }
     }
 
     addPoint(point) {
@@ -195,6 +237,10 @@ export default class Target {
             this.element.appendChild(groupStatsElements[i]);
         }
 
+        // Bottom label element.
+        this.floatingLabel = this.createFloatingLabelElement();
+        this.element.appendChild(this.floatingLabel);
+
         this.xCenter = coords.xCenter;
         this.yCenter = coords.yCenter;
 
@@ -206,6 +252,47 @@ export default class Target {
         }
 
         return this;
+    }
+
+    createFloatingLabelElement() {
+        const kwadrant = this.calculateKwadrantOfAngle(this.angle);
+        const holder = this.chart.document.createElement('div');
+        const holderStyles = [
+            'position: absolute',
+            'left: 50%',
+            'transform: translate(-50%, 0)'
+        ];
+
+        if (kwadrant === 1 || kwadrant === 2) {
+            if (this.settings.floatingLabelPosition === 'inside') {
+                if (this.angle === 0 || this.angle === 180) {
+                    holderStyles.push(`bottom: ${this.chart.settings.target.height}px;`);
+                } else {
+                    holderStyles.push(`top: ${this.chart.settings.target.height}px;`);
+                }
+            } else {
+                if (this.angle === 0 || this.angle === 180) {
+                    holderStyles.push(`top: ${this.chart.settings.target.height}px;`);
+                } else {
+                    holderStyles.push(`bottom: ${this.chart.settings.target.height}px;`);
+                }
+            }
+        } else {
+            if (this.settings.floatingLabelPosition === 'inside') {
+                holderStyles.push(`bottom: ${this.chart.settings.target.height}px`);
+            } else {
+                holderStyles.push(`top: ${this.chart.settings.target.height}px;`);
+            }
+        }
+
+        if (this.settings.showFloatingLabel === false) {
+            holderStyles.push('display: none');
+        }
+
+        holder.innerHTML = this.settings.floatingLabelText;
+        holder.setAttribute('style', holderStyles.join(';'));
+
+        return holder;
     }
 
     calculateGroupCenterTargetCoordinates(xCenter, yCenter, rotation) {
@@ -309,9 +396,21 @@ export default class Target {
         let counter = 0;
         this.chart.groups.forEach(group => {
             if (!group.ignoreStats) {
+                const holderStyles = [
+                    `color: ${group.color}`,
+                    `font-size: ${this.chart.settings.target.fontSizeStatistics}px`,
+                    'position: absolute',
+                    'text-align: center',
+                    'top: 50%'
+                ];
+
                 // Holder.
                 const holder = this.chart.document.createElement('div');
                 holder.setAttribute('class', this.chart.createPrefixedIdentifier('target-stats-holder'));
+
+                if (this.settings.showStatistics === false) {
+                    holderStyles.push('display: none');
+                }
 
                 const valueEl = this.chart.document.createElement('span');
                 valueEl.setAttribute('class', this.chart.createPrefixedIdentifier('stats-value'));
@@ -329,14 +428,6 @@ export default class Target {
                     'padding-top: 2px',
                 ].join(';'));
                 label.innerHTML = group.title;
-
-                const holderStyles = [
-                    `color: ${group.color}`,
-                    `font-size: ${this.chart.settings.target.fontSizeStatistics}px`,
-                    'position: absolute',
-                    'text-align: center',
-                    'top: 50%'
-                ];
 
                 if (counter === 0) {
                     holderStyles.push(`left: -${this.chart.settings.target.offsetStatistics}px`);
@@ -554,6 +645,10 @@ export default class Target {
         }
 
         return points;
+    }
+
+    clearPoints() {
+        this.points = {};
     }
 
     /**
