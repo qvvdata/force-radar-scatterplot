@@ -12,7 +12,8 @@
         <button id="toggleFloatingLabels">Toggle Floating Labels</button>
 
         <button id="reinit">Re-init</button>
-        <button id="startLoop">Start Loop animation</button>
+        <button id="startRandomLoop">Start Random Loop animation</button>
+        <button id="startRandomCenterLoop">Start Random Center Loop animation</button>
         <button id="stopLoop">Stop loop animation</button>
         <button id="movePointsRandomly">Move points randomly</button>
         <button id="movePointsToRandomTarget">Move all points</button>
@@ -67,6 +68,8 @@ ForceRadarScatterplotInstance.init()
     .fillWithRandomData()
     .render();
 
+
+console.log(ForceRadarScatterplotInstance);
 
 function getDelay() {
     return parseInt(document.getElementById('delay').value, 10);
@@ -157,8 +160,12 @@ window.document.querySelector('#toggleActivity').addEventListener('click', () =>
     ForceRadarScatterplotInstance.updatePoints(newStates, 2, false);
 });
 
-window.document.querySelector('#startLoop').addEventListener('click', () => {
+window.document.querySelector('#startRandomLoop').addEventListener('click', () => {
     ForceRadarScatterplotInstance.startRandomLoopingAnimation(getDelay());
+});
+
+window.document.querySelector('#startRandomCenterLoop').addEventListener('click', () => {
+    ForceRadarScatterplotInstance.startRandomCenterLoopAnimation(getDelay());
 });
 
 window.document.querySelector('#stopLoop').addEventListener('click', () => {

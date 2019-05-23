@@ -950,6 +950,36 @@ export default class ForceRadarScatterplot {
         }, intervalTimeInMs);
     }
 
+    /**
+     * Start an infinite animation where a random point
+     * gets a random target assigned.
+     *
+     * @param {Number} intervalTimeInMs
+     */
+    startRandomCenterLoopAnimation(intervalTimeInMs = 50) {
+        const targets = Array.from(this.targets.values());
+        const points = Array.from(this.points.values());
+
+        // Each interval we select a random point.
+        // If the point is in the center. we move it to a random target.
+        // If it's not in the center target, we move it to the center.
+        this.loopingAnimationIntervalId = setInterval(() => {
+            const randomPointIndex = Math.floor(Math.random() * (points.length));
+            const randomPoint = points[randomPointIndex];
+
+            const targetOfPoint = randomPoint.getTarget();
+
+            if (targetOfPoint.getId() === 'FRC_CENTER_TARGET') {
+                const randomTargetIndex = Math.floor(Math.random() * (targets.length));
+                const randomTarget = targets[randomTargetIndex];
+
+                randomPoint.setTarget(randomTarget);
+            } else {
+                randomPoint.setTarget(this.getCenterTarget());
+            }
+        }, intervalTimeInMs);
+    }
+
     stopRandomLoopingAnimation() {
         clearInterval(this.loopingAnimationIntervalId);
     }
@@ -1358,9 +1388,11 @@ export default class ForceRadarScatterplot {
 
     getRandomTarget() {
         const targets = [...this.targets.values()];
-
         const index = Math.floor(Math.random() * targets.length);
-
         return targets[index];
+    }
+
+    getCenterTarget() {
+        return this.targets.get('FRC_CENTER_TARGET');
     }
 }
