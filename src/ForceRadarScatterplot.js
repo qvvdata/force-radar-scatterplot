@@ -675,7 +675,7 @@ export default class ForceRadarScatterplot {
         const cls = this;
         return function forceTick(e) {
             if (cls.debug === true) {
-                //cls.stats.begin();
+                // cls.stats.begin();
             }
 
             cls.d3.selectAll(cls.layers.pointNodes)
@@ -686,7 +686,7 @@ export default class ForceRadarScatterplot {
                 .attr('cy', d => d.y);
 
             if (cls.debug === true) {
-                //cls.stats.end();
+                // cls.stats.end();
             }
         };
     }

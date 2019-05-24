@@ -163,6 +163,8 @@ export default class CenterTarget extends Target {
         // No idea why.
         text.setAttribute('y', this.chart.holder.clientHeight / 2 + bbox.height / 2 - 3);
 
+        text.setAttribute('fill', this.settings.color);
+
         this.textNode = text;
     }
 
