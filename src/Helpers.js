@@ -111,8 +111,8 @@ export default class Helpers {
     static on4kScreen() {
         let test;
 
-        const width = screen.width;
-        const height = screen.height;
+        const width = window.screen.width;
+        const height = window.screen.height;
 
         if (height > width) {
             test = height;

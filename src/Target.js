@@ -610,7 +610,7 @@ export default class Target {
         relativePos.y = relativePos.top;
 
         const stepsWidth = Math.ceil(BBox.width / this.collisionPrecision);
-        const stepsHeight = Math.ceil(BBox.height / this.collisionPrecision / 2);
+        const stepsHeight = Math.ceil(BBox.height / this.collisionPrecision / 2) + 1;
 
         const targetCenterX = relativePos.left + relativePos.width / 2;
         const targetCenterY = relativePos.top + relativePos.height / 2;
@@ -631,8 +631,11 @@ export default class Target {
                 const point = new Point(this.chart);
                 point.isStatic = true;
 
+                                    /* move relative Y to the inner corner of the target   - calculate step Y position     + move corner nodes inward if borderRadius */
+                const offsetYStep = (relativePos.height / 2 - this.collisionPrecision / 2) - (j * this.collisionPrecision) + offsetY;
+
                 point.x = relativePos.left + (i * this.collisionPrecision);
-                point.y = relativePos.bottom - (BBox.height / 2) + (j * this.collisionPrecision) + offsetY;
+                point.y = relativePos.bottom - (BBox.height / 2) + offsetYStep;
 
                 const rotatedCoords = Helpers.rotate(targetCenterX, targetCenterY, point.x, point.y, this.angle - 90);
 
